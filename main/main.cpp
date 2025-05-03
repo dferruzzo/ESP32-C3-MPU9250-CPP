@@ -11,7 +11,9 @@ extern "C" {
     #include "esp_chip_info.h"
     //#include "esp_flash.h"
     #include "esp_system.h"
-    #include "driver/i2c.h"
+    #include "esp_log.h"
+    #include "esp_err.h"
+    #include "driver/i2c_master.h"
 }
 
 #define I2C_MASTER_SDA_IO GPIO_NUM_6   
@@ -19,38 +21,39 @@ extern "C" {
 #define I2C_MASTER_FREQ_HZ 100000
 #define I2C_MASTER_PORT I2C_NUM_0
 
-void initI2C()
-{
-    // Configuração do driver I2C
-    i2c_config_t conf = {};
-    conf.mode = I2C_MODE_MASTER;                      // Modo mestre
-    conf.sda_io_num = I2C_MASTER_SDA_IO;              // Pino SDA
-    conf.sda_pullup_en = GPIO_PULLUP_ENABLE;          // Pull-up habilitado para SDA
-    conf.scl_io_num = I2C_MASTER_SCL_IO;              // Pino SCL
-    conf.scl_pullup_en = GPIO_PULLUP_ENABLE;          // Pull-up habilitado para SCL
-    conf.master.clk_speed = I2C_MASTER_FREQ_HZ;       // Frequência do barramento
+class I2CManager {
+public:
+    I2CManager() = default;
 
-    // Instalação do driver I2C
-    esp_err_t err = i2c_param_config(I2C_MASTER_PORT, &conf);
-    if (err != ESP_OK) {
-        std::cerr << "Erro ao configurar parâmetros do I2C: " << esp_err_to_name(err) << std::endl;
-        return;
+    i2c_master_bus_handle_t handle;
+    i2c_master_bus_config_t conf = {
+        .i2c_port = I2C_NUM_0,
+        .sda_io_num = I2C_MASTER_SDA_IO,
+        .scl_io_num = I2C_MASTER_SCL_IO,
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .glitch_ignore_cnt = 7,
+        .intr_priority = 0,
+        .trans_queue_depth = 10,
+        .flags = {
+            .enable_internal_pullup = true,
+            .allow_pd = false,},
+    };
+
+    void init() {
+        // Inicialização do driver I2C
+        esp_err_t err = i2c_new_master_bus(&conf, &handle);
+        if (err != ESP_OK) {
+            ESP_LOGI("I2C", "Erro ao inicializar o I2C: %s", esp_err_to_name(err));    
+            return;
+        }
+        ESP_LOGI("I2C", "I2C master bus initialized successfully");
     }
-
-    err = i2c_driver_install(I2C_MASTER_PORT, conf.mode, 0, 0, 0);
-    if (err != ESP_OK) {
-        std::cerr << "Erro ao instalar driver I2C: " << esp_err_to_name(err) << std::endl;
-        return;
-    }
-
-    std::cout << "I2C inicializado com sucesso!" << std::endl;
-}
+};
 
 extern "C" void app_main(void)
 {
-    std::cout << "Hello world!" << std::endl;
-
     // Inicializa o barramento I2C
-    initI2C();
+    I2CManager i2cManager;
+    i2cManager.init();
 
 }
