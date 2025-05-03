@@ -25,5 +25,9 @@ extern "C" void app_main(void)
     I2CManager i2cManager;
     i2cManager.init();
     i2cManager.scanI2CDevices();
-
+    i2cManager.addDevice(0x68); // Exemplo de endereço de dispositivo I2C
+    // Lê dados do dispositivo I2C
+    uint8_t data; // Buffer para armazenar os dados lidos
+    i2cManager.readRegFromDevice(0x68, 0x75, &data, 1);
+    // i2cManager.deInit();
 }
