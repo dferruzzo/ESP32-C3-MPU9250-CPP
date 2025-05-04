@@ -155,17 +155,7 @@ esp_err_t I2CManager::readRegFromDevice(uint8_t dev_address, uint8_t reg_address
         return ESP_ERR_NOT_FOUND;
     }
 
-    esp_err_t ret = i2c_master_transmit_receive(deviceHandle, &reg_address, 1, data, length, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
-
-    if (ret == ESP_OK) {
-        ESP_LOGI("I2C", "Data 0x%02X read from device 0x%02X at register 0x%02X", *data, dev_address, reg_address);
-        return ret;
-
-    } else {
-        ESP_LOGE("I2C", "Failed to read data from device at address 0x%02X: %s", dev_address, esp_err_to_name(ret));
-        return ret;
-    }
-
+    return readRegFromDeviceWithHandle(deviceHandle, reg_address, data, length);
 }
 
 esp_err_t I2CManager::readRegFromDeviceWithHandle(i2c_master_dev_handle_t dev_handle, uint8_t reg_address, uint8_t* data, size_t length){
@@ -198,8 +188,14 @@ void I2CManager::writeRegToDevice(uint8_t dev_address, uint8_t reg_address, uint
         ESP_LOGE("I2C", "Device with address 0x%02X not found in deviceConfigs", dev_address);
         return;
     }
-
-    esp_err_t ret = i2c_master_transmit(deviceHandle, &reg_address, 1, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+    /*
+    esp_err_t mpu9250_write_register(i2c_master_dev_handle_t dev_handle, uint8_t reg_addr, uint8_t data) {
+        uint8_t write_buf[2] = {reg_addr, data};
+        return i2c_master_transmit(dev_handle, write_buf, sizeof(write_buf), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+    }
+    */
+    uint8_t write_buf[2] = {reg_address, *data};
+    esp_err_t ret = i2c_master_transmit(deviceHandle, write_buf, sizeof(write_buf), I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
     if (ret != ESP_OK) {
         ESP_LOGE("I2C", "Failed to write register address to device at address 0x%02X: %s", dev_address, esp_err_to_name(ret));
         return;

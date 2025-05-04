@@ -1,6 +1,7 @@
 # TODO
 
-- [ ] esp_err_t I2Cmanager::writeRegFromDeviceWithHandle(i2c_master_dev_handle_t dev_handle, uint8_t reg_address, uint8_t* data, size_t length);
+- [ ] Test: void I2CManager::writeRegToDevice(uint8_t dev_address, uint8_t reg_address, uint8_t* data, size_t length);
+- [ ] Implement: esp_err_t I2Cmanager::writeRegFromDeviceWithHandle(i2c_master_dev_handle_t dev_handle, uint8_t reg_address, uint8_t* data, size_t length);
 - [ ] Configure MPU9250 gyroscope.
 - [ ] Read gyro.
 - [ ] Calibrate gyro.  
