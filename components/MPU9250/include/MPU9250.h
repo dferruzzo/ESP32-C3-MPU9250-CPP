@@ -23,21 +23,23 @@ public:
     ~MPU9250();
 
     esp_err_t init();
-    //esp_err_t readMPU9250Data(uint8_t reg_address, uint8_t* data, size_t length);
-    // esp_err_t readSensorData(uint8_t reg_address, uint8_t* data, size_t
-    // length); esp_err_t writeSensorData(uint8_t reg_address, uint8_t* data,
-    // size_t length);
+    esp_err_t gyroReset();
+    
+      // esp_err_t readMPU9250Data(uint8_t reg_address, uint8_t* data, size_t
+      // length);
+      //  esp_err_t readSensorData(uint8_t reg_address, uint8_t* data, size_t
+      //  length); esp_err_t writeSensorData(uint8_t reg_address, uint8_t* data,
+      //  size_t length);
 
-private:
-    I2CManager* i2cManager;
-    uint8_t deviceAddress = MPU9250_ADDRESS;
-    i2c_master_dev_handle_t* MPU9250_handle_ptr = nullptr;
+     private:
+      I2CManager* i2cManager;
+      uint8_t deviceAddress = MPU9250_ADDRESS;
+      i2c_master_dev_handle_t* MPU9250_handle_ptr = nullptr;
 
-    //esp_err_t readRegFromDevice(uint8_t reg_address, uint8_t* data, size_t length);
-    //esp_err_t writeRegToDevice(uint8_t reg_address, uint8_t* data, size_t length);
-    //esp_err_t initDevice();
-    //esp_err_t deInitDevice();
-};
+      // esp_err_t readRegFromDevice(uint8_t reg_address, uint8_t* data, size_t
+      // length); esp_err_t writeRegToDevice(uint8_t reg_address, uint8_t* data,
+      // size_t length); esp_err_t initDevice(); esp_err_t deInitDevice();
+    };
 
 #ifdef __cplusplus
 }

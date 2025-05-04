@@ -25,10 +25,6 @@ extern "C" void app_main(void)
     I2CManager i2cManager;
     //i2cManager.scanI2CDevices();
     i2cManager.addDevice(MPU9250_ADDRESS); 
-    // Lê dados do dispositivo I2C
-    //uint8_t data; // Buffer para armazenar os dados lidos
-    //i2cManager.readRegFromDevice(MPU9250_ADDRESS, MPU9250_WHO_AM_I, &data, 1);
-
     MPU9250 mpu9250(&i2cManager);
 
     // i2cManager.deInit();
