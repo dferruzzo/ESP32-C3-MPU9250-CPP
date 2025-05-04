@@ -32,7 +32,8 @@ public:
     esp_err_t readRegFromDeviceWithHandle(i2c_master_dev_handle_t dev_handle, uint8_t reg_address, uint8_t* data, size_t length);
     void writeRegToDevice(uint8_t dev_address, uint8_t reg_address, uint8_t* data, size_t length);
     i2c_master_dev_handle_t* isDeviceInConfig(uint8_t address);
-    //std::vector<i2c_master_dev_handle_t> deviceHandles = std::vector<i2c_master_dev_handle_t>(I2C_NUM_MAX_DEVICES);
+    //esp_err_t writeRegToDeviceWithHandle(i2c_master_dev_handle_t dev_handle, uint8_t reg_address, uint8_t* data, size_t length);
+    //i2c_master_dev_handle_t* isDeviceInConfig(uint8_t address);
 
 
 private:

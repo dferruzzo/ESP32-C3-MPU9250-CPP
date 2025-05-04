@@ -211,7 +211,10 @@ void I2CManager::writeRegToDevice(uint8_t dev_address, uint8_t reg_address, uint
         ESP_LOGE("I2C", "Failed to write data to device at address 0x%02X: %s", dev_address, esp_err_to_name(ret));
     }
 }
-
+/*
+esp_err_t I2CManager::writeRegToDeviceWithHandle(i2c_master_dev_handle_t dev_handle, uint8_t reg_address, uint8_t* data, size_t length){
+}
+*/
 i2c_master_dev_handle_t* I2CManager::isDeviceInConfig(uint8_t address) {
     for (size_t i = 0; i < deviceConfigs.size(); i++) {
         if (deviceConfigs[i].device_address == address) {

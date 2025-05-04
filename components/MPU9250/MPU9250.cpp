@@ -36,10 +36,10 @@ esp_err_t MPU9250::init() {
     ESP_LOGI("MPU9250", "MPU9250 initialized successfully");
     return ESP_OK;
 }
-
+/*
 esp_err_t MPU9250::gyroReset(){
     // Reseta o giroscópio
-    /*
+  
     uint8_t data[1] = {0x80}; // Bit de reset
     esp_err_t ret = i2cManager->writeRegToDeviceWithHandle(, MPU9250_PWR_MGMT_1, data, 1);
     if (ret != ESP_OK) {
@@ -48,9 +48,9 @@ esp_err_t MPU9250::gyroReset(){
     }
     ESP_LOGI("MPU9250", "Gyroscope reset successfully");
     return ESP_OK;
-*/
-}
 
+}
+*/
 /*
 esp_err_t MPU9250::readMPU9250Data(uint8_t reg_address, uint8_t* data, size_t length) {
     if (MPU9250_handle_ptr == nullptr) {
