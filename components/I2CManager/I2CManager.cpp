@@ -12,6 +12,7 @@ I2CManager::I2CManager() {
     bus_config.trans_queue_depth = 0;
     bus_config.flags.enable_internal_pullup = true;
     bus_config.flags.allow_pd = false;
+    init();
 }
 
 I2CManager::~I2CManager() {
@@ -127,6 +128,7 @@ void I2CManager::addDevice(uint8_t address) {
     if (ret == ESP_OK) {
 
         ESP_LOGI("I2C", "Device at address 0x%02X added successfully", address);
+
         devices_added++;
 
     } else {
@@ -136,32 +138,48 @@ void I2CManager::addDevice(uint8_t address) {
     }
 }
 
-void I2CManager::readRegFromDevice(uint8_t dev_address, uint8_t reg_address, uint8_t* data, size_t length){
+esp_err_t I2CManager::readRegFromDevice(uint8_t dev_address, uint8_t reg_address, uint8_t* data, size_t length){
     // Lê dados de um dispositivo I2C
     if (dev_address < 1 || dev_address > 127) {
         ESP_LOGE("I2C", "Invalid I2C address: 0x%02X", dev_address);
-        return;
+        return ESP_ERR_INVALID_ARG;
     }
     if (length == 0) {
         ESP_LOGE("I2C", "Invalid length: %zu", length);
-        return;
+        return ESP_ERR_INVALID_ARG;
     }
 
-    i2c_master_dev_handle_t deviceHandle = isDeviceInConfig(dev_address);
+    i2c_master_dev_handle_t deviceHandle = *isDeviceInConfig(dev_address);
     if (deviceHandle == nullptr) {
         ESP_LOGE("I2C", "Device with address 0x%02X not found in deviceConfigs", dev_address);
-        return;
+        return ESP_ERR_NOT_FOUND;
     }
-    //deviceConfigs[0].device_address = address;
 
     esp_err_t ret = i2c_master_transmit_receive(deviceHandle, &reg_address, 1, data, length, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
 
     if (ret == ESP_OK) {
         ESP_LOGI("I2C", "Data 0x%02X read from device 0x%02X at register 0x%02X", *data, dev_address, reg_address);
+        return ret;
+
     } else {
         ESP_LOGE("I2C", "Failed to read data from device at address 0x%02X: %s", dev_address, esp_err_to_name(ret));
+        return ret;
     }
 
+}
+
+esp_err_t I2CManager::readRegFromDeviceWithHandle(i2c_master_dev_handle_t dev_handle, uint8_t reg_address, uint8_t* data, size_t length){
+    
+    esp_err_t ret = i2c_master_transmit_receive(dev_handle, &reg_address, 1, data, length, I2C_MASTER_TIMEOUT_MS / portTICK_PERIOD_MS);
+
+    if (ret == ESP_OK) {
+        ESP_LOGI("I2C", "Data 0x%02X read at register 0x%02X", *data, reg_address);
+        return ret;
+
+    } else {
+        ESP_LOGE("I2C", "Failed to read data from device at address: %s", esp_err_to_name(ret));
+        return ret;
+    }
 }
 
 void I2CManager::writeRegToDevice(uint8_t dev_address, uint8_t reg_address, uint8_t* data, size_t length) {
@@ -175,7 +193,7 @@ void I2CManager::writeRegToDevice(uint8_t dev_address, uint8_t reg_address, uint
         return;
     }
 
-    i2c_master_dev_handle_t deviceHandle = isDeviceInConfig(dev_address);
+    i2c_master_dev_handle_t deviceHandle = *isDeviceInConfig(dev_address);
     if (deviceHandle == nullptr) {
         ESP_LOGE("I2C", "Device with address 0x%02X not found in deviceConfigs", dev_address);
         return;
@@ -194,11 +212,11 @@ void I2CManager::writeRegToDevice(uint8_t dev_address, uint8_t reg_address, uint
     }
 }
 
-i2c_master_dev_handle_t I2CManager::isDeviceInConfig(uint8_t address) {
+i2c_master_dev_handle_t* I2CManager::isDeviceInConfig(uint8_t address) {
     for (size_t i = 0; i < deviceConfigs.size(); i++) {
         if (deviceConfigs[i].device_address == address) {
-            ESP_LOGI("I2C", "Device with address 0x%02X found in deviceConfigs", address);
-            return deviceHandles[i];
+            ESP_LOGI("I2C", "Device with address 0x%02X found in deviceHandle %p", address, &deviceHandles[i]);
+            return &deviceHandles[i];
         }
     }
     ESP_LOGW("I2C", "Device with address 0x%02X not found in deviceConfigs", address);

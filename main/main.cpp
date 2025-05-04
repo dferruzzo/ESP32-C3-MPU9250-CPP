@@ -5,7 +5,7 @@
 #include <cinttypes>
 #include "sdkconfig.h"
 #include "I2CManager.h"
-
+#include "MPU9250.h"
 
 extern "C" {
     #include "freertos/FreeRTOS.h"
@@ -23,11 +23,13 @@ extern "C" void app_main(void)
 {
     // Inicializa o barramento I2C
     I2CManager i2cManager;
-    i2cManager.init();
-    i2cManager.scanI2CDevices();
-    i2cManager.addDevice(0x68); // Exemplo de endereço de dispositivo I2C
+    //i2cManager.scanI2CDevices();
+    i2cManager.addDevice(MPU9250_ADDRESS); 
     // Lê dados do dispositivo I2C
-    uint8_t data; // Buffer para armazenar os dados lidos
-    i2cManager.readRegFromDevice(0x68, 0x75, &data, 1);
+    //uint8_t data; // Buffer para armazenar os dados lidos
+    //i2cManager.readRegFromDevice(MPU9250_ADDRESS, MPU9250_WHO_AM_I, &data, 1);
+
+    MPU9250 mpu9250(&i2cManager);
+
     // i2cManager.deInit();
 }
