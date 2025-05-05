@@ -2,7 +2,7 @@
     "idf.pythonInstallPath": "/usr/local/bin/python3",
     "idf.espIdfPath": "/Users/dferruzzo/esp/esp-idf",
     "idf.toolsPath": "/Users/dferruzzo/.espressif",
-    "idf.port": "/dev/ttyACM0",
+    "idf.port": "/dev/tty.usbmodem142301",
     "idf.adapterTargetName": "esp32",
     "C_Cpp.intelliSenseEngine": "Tag Parser",
     "idf.flashType": "UART",

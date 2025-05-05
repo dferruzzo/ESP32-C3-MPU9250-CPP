@@ -27,7 +27,7 @@ extern "C" void app_main(void)
     i2cManager.addDevice(MPU9250_ADDRESS); 
     
     MPU9250 mpu9250(&i2cManager);
-    // Testando as coniguracões do giro.
+    // Testando as configuracões do giro.
     mpu9250.gyroConfig(MPU9250_GYRO_FS_SEL_1000,  MPU9250_FCHOICE_B_GYRO_FILTER_ENABLED, MPU9250_GYRO_DLPF_CFG_20HZ);
     //mpu9250.getGyroFullScale();
     // i2cManager.deInit();

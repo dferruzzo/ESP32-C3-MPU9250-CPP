@@ -4,7 +4,6 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/build/esp-idf**",
                 "${env:IDF_PATH}/components/**"
             ],
             "defines": [],
@@ -17,11 +16,8 @@
             "name": "esp-idf",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/build/esp-idf**",
-                "${workspaceFolder}/build/esp-idf/**",
                 "${workspaceFolder}/build/esp-idf/**/**",
-                "${env:IDF_PATH}/components/**",
-                "${env:HOME}/workspace/ESP32-C3-MPU9250-CPP/**"
+                "${env:IDF_PATH}/components/**"
             ],
             "defines": [],
             "compilerPath": "${env:IDF_PATH}/tools/idf.py",
