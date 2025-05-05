@@ -32,7 +32,7 @@ public:
     esp_err_t readRegFromDeviceWithHandle(i2c_master_dev_handle_t dev_handle, uint8_t reg_address, uint8_t* data, size_t length);
     void writeRegToDevice(uint8_t dev_address, uint8_t reg_address, uint8_t* data, size_t length);
     i2c_master_dev_handle_t* isDeviceInConfig(uint8_t address);
-    //esp_err_t writeRegToDeviceWithHandle(i2c_master_dev_handle_t dev_handle, uint8_t reg_address, uint8_t* data, size_t length);
+    esp_err_t writeRegToDeviceWithHandle(i2c_master_dev_handle_t dev_handle, uint8_t reg_address, uint8_t* data, size_t length);
 
 private:
     int devices_added = 0;

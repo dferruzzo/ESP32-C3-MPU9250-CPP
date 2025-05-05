@@ -6,6 +6,8 @@
 
 /* Gyroscope configuration */
 
+#define MPU9250_RESET_BIT       7
+
 #define MPU9250_GYRO_FS_SEL_250     0x00 // 250 degrees/sec 
 #define MPU9250_GYRO_FS_SEL_500     0x01 // 500 degrees/sec
 #define MPU9250_GYRO_FS_SEL_1000    0x02 // 1000 degrees/sec
