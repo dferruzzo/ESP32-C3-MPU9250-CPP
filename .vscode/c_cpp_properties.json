@@ -16,6 +16,10 @@
         {
             "name": "esp-idf",
             "includePath": [
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/build/esp-idf**",
+                "${workspaceFolder}/build/esp-idf/**",
+                "${workspaceFolder}/build/esp-idf/**/**",
                 "${env:IDF_PATH}/components/**",
                 "${env:HOME}/workspace/ESP32-C3-MPU9250-CPP/**"
             ],
