@@ -12,9 +12,9 @@
 - [x] Configure MPU9250 magnetometer.
 - [x] Read mag.
 - [x] python plot app.
-- [ ] Calibrate mag.
 - [ ] Install Eigen.
 - [ ] Test Eigen.
 - [ ] Calibrate acc.
+- [ ] Calibrate mag.
 - [ ] Kalman filter.
 - [ ] sensor fusion.

@@ -49,6 +49,5 @@ extern "C" void app_main(void)
 
         vTaskDelay(pdMS_TO_TICKS(250));
     }
-    // mpu9250.getGyrFullScale();
     //  i2cManager.deInit();
 }

@@ -2,7 +2,7 @@ import serial
 import matplotlib.pyplot as plt
 from collections import deque
 
-ser = serial.Serial('/dev/tty.usbmodem142301', 115200)
+ser = serial.Serial('/dev/ttyACM0', 115200)
 print("Reading data...")
 
 window_size = 100
