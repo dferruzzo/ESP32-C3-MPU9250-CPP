@@ -272,6 +272,88 @@ esp_err_t MPU9250::accCalibrate() {
     Precisa EIGEN
     */
 
+    /* teste */
+    Eigen::MatrixXf M(2, 2);
+    Eigen::MatrixXf V(2, 2);
+    for (int i = 0; i <= 1; i++) {
+        for (int j = 0; j <= 1; j++) {
+            M(i, j) = 1;
+            V(i, j) = 2;
+        }
+    }
+    Eigen::MatrixXf Result = M * V;
+    std::cout << "MatrixXf Result = " << std::endl << Result << std::endl;
+
+    /*
+    Algoritmo
+
+    1. Coletar N amostras de dados do acelerômetro em repouso com:
+        
+        - o eixo x apontando para abaixo.
+        - o eixo x apontando para acima.
+        - o eixo y apontando para baixo.
+        - o eixo y apontando para cima.
+        - o eixo z apontando para baixo.
+        - o eixo z apontando para cima.
+    
+    2. Montar a matriz Y(6N x 3) com os dados coletados: 
+
+        Y = [
+             1 0 0
+            ...
+             1 0 0
+            -1 0 0 
+            ...
+            -1 0 0
+             0 1 0
+            ...
+             0  1  0
+             0 -1  0
+            ...
+             0 -1  0
+             0  0  1
+             ...
+             0  0  1     
+             0  0 -1
+             ...
+             0  0 -1
+             ]
+
+    2. Montar a matriz W(6N x 4) com os dados coletados: 
+
+        W = [
+            x1 y1 z1 1
+            x2 y2 z2 1
+            ...
+            x6N y6N z6N 1
+        ]
+
+    3. computar a matriz 
+
+    Wb = (W^T x W)^(-1) x W^T X Y
+
+    Dimensionalmente temos:
+
+    (4 x 6N)(6N x 4)(4 x 6N) (6N x3) = (4 x 3)
+
+    4. Calcular a matriz de calibração:
+
+    [     M^T     ]
+    [             ]  = Wb
+    [ a_offset^T  ]    
+
+    5. As medições calibradas são obtidas:
+
+    ac^T = [ am^T 1 ] x [     M^T     ]
+                        [             ] 
+                        [ a_offset^T  ]
+
+    Dimensionalmente temos:
+
+    (1 x 3) = (1 x 4)(4 x 3) = (1 x 3)
+
+    */
+
     return ESP_OK; 
 }
 

@@ -35,6 +35,7 @@ extern "C" void app_main(void)
 
     // Testando conf do acelerômetro.
     mpu9250.accConfig(MPU9250_ACCEL_FS_SEL_4, MPU9250_ACCEL_NO_FIL_BW_1046Hz);
+    mpu9250.accCalibrate();
 
     while(1){
         mpu9250.gyrRead();

@@ -10,6 +10,8 @@
 #include "I2CManager.h"
 #include "MPU9250_Configuration_Map.h"
 #include "MPU9250_Register_Map.h"
+#include <eigen3/Eigen/Eigen>
+#include <iostream>
 
 #define TAG "MPU9250"
 
