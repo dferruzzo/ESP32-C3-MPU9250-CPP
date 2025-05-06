@@ -38,13 +38,14 @@ extern "C" void app_main(void)
 
     while(1){
         mpu9250.gyrRead();
-        mpu9250.gyrGetRead();
+        //mpu9250.gyrGetRead();
         mpu9250.accRead();
-        mpu9250.accGetRead();
+        //mpu9250.accGetRead();
         mpu9250.temRead();
-        mpu9250.temGetRead();
+        //mpu9250.temGetRead();
         mpu9250.magRead();
-        mpu9250.magGetRead();
+        //mpu9250.magGetRead();
+        mpu9250.printDataToTerminal();
 
         vTaskDelay(pdMS_TO_TICKS(250));
     }

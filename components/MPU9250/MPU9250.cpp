@@ -345,3 +345,14 @@ esp_err_t MPU9250::magGetRead(){
 
     return ESP_OK;
 }
+
+void MPU9250::printDataToTerminal(){
+
+     // Print data in CSV format. The format is:
+        // "GyrX,GyrY, GyrZ, AccX, AccY, AccZ, MagX, MagY, MagZ, Temp"
+        printf("%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
+                gyroData.x, gyroData.y, gyroData.z, 
+                accData.x, accData.y, accData.z,
+                magData.x, magData.y, magData.z,
+                temData);
+}

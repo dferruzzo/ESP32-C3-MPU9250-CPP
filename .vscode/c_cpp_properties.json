@@ -31,7 +31,10 @@
             "recursiveIncludes": {},
             "browse": {
                 "limitSymbolsToIncludedHeaders": true
-            }
+            },
+            "compileCommands": [
+                "${workspaceFolder}/build/compile_commands.json"
+            ]
         }
     ],
     "version": 4

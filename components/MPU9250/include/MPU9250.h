@@ -56,6 +56,8 @@ class MPU9250 {
 		esp_err_t magRead();
 		esp_err_t magGetRead();
 
+		void printDataToTerminal();
+
 	private:
 
 		//	Configuração do I2C

@@ -11,7 +11,7 @@
 - [x] Calibrate temp.
 - [x] Configure MPU9250 magnetometer.
 - [x] Read mag.
-- [ ] python plot app.
+- [x] python plot app.
 - [ ] Calibrate mag.
 - [ ] Install Eigen.
 - [ ] Test Eigen.
