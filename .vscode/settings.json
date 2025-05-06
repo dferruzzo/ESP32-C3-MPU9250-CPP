@@ -1,5 +1,5 @@
 {
-    "idf.pythonInstallPath": "/home/diego/.espressif/python_env/idf5.5_py3.11_env/bin/python",
+    "idf.pythonInstallPath": "/usr/local/bin/python3",
     "idf.espIdfPath": "/media/diego/Diego/esp/esp-idf",
     "idf.toolsPath": "/home/diego/.espressif",
     "idf.port": "/dev/tty.usbmodem142301",

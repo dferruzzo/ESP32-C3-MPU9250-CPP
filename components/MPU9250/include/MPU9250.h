@@ -52,7 +52,7 @@ class MPU9250 {
         esp_err_t temRead();
 		esp_err_t temGetRead();
 
-		esp_err_t magConfig();
+		//esp_err_t magConfig();
 		esp_err_t magRead();
 		esp_err_t magGetRead();
 
@@ -61,6 +61,7 @@ class MPU9250 {
 		//	Configuração do I2C
 		I2CManager* i2cManager;
 		uint8_t deviceAddress = MPU9250_ADDRESS;
+		uint8_t deviceAddressMag = MPU9250_MAGNETOMETER_ADDR;
 		i2c_master_dev_handle_t* MPU9250_handle_ptr = nullptr;
 		i2c_master_dev_handle_t* MPU9250_mag_handle_ptr = nullptr;
 
@@ -82,8 +83,8 @@ class MPU9250 {
 		float temData = 0.0f;
 		
 		// Magnetômetro
-		Vec3f magData;
-
+		float magScale = 0.1465f;
+        Vec3f magData;
     };
 
 };

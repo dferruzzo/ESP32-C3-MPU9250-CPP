@@ -15,10 +15,19 @@ esp_err_t MPU9250::init() {
     // Inicializa o dispositivo MPU9250
     MPU9250_handle_ptr = i2cManager->isDeviceInConfig(deviceAddress);
     if (MPU9250_handle_ptr == nullptr) {
-        ESP_LOGE("MPU9250", "Device not found in I2C configuration");
+        ESP_LOGE("MPU9250", "Device not found in I2C configuration. Address: 0x%02X", deviceAddress);
         return ESP_FAIL;
     } else {
-        ESP_LOGI("MPU9250", "Device found in I2C configuration %p:", MPU9250_handle_ptr);
+        ESP_LOGI("MPU9250", "Device  0x%02X found in I2C configuration %p:", deviceAddress, MPU9250_handle_ptr);
+    }
+
+    MPU9250_mag_handle_ptr = i2cManager->isDeviceInConfig(deviceAddressMag);
+
+    if (MPU9250_mag_handle_ptr == nullptr) {
+        ESP_LOGE("MPU9250", "Device not found in I2C configuration. Address: 0x%02X", deviceAddressMag);
+        return ESP_FAIL;
+    } else {
+        ESP_LOGI("MPU9250", "Device  0x%02X found in I2C configuration %p:", deviceAddressMag, MPU9250_mag_handle_ptr);
     }
 
     // Reset MPU9250
@@ -289,22 +298,50 @@ esp_err_t MPU9250::temGetRead() {
     return ESP_OK; 
 }
 
+//esp_err_t MPU9250::magConfig(){return ESP_OK;}
+
 esp_err_t MPU9250::magRead(){
+uint8_t pass_through = PASS_THROUGH_MODE;
+uint8_t mag_single_measure = 0x01;
 
-    esp_err_t ret1, ret2;
+esp_err_t ret1, ret2;
+ret1 = i2cManager->writeRegToDeviceWithHandle(
+      *MPU9250_handle_ptr, MPU9250_INT_PIN_CFG, &pass_through,
+      1);  // configura o modo pass-through
+ret2 = i2cManager->writeRegToDeviceWithHandle(
+      *MPU9250_mag_handle_ptr, MPU9250_MAG_CNTL, &mag_single_measure,1);  // configura o endereço do AK8963
 
-    ret1 = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_INT_PIN_CFG, &PASS_THROUGH_MODE, 1); // configura o modo pass-through
+if (ret1 != ESP_OK || ret2 != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to configure magnetometer");
+    return ESP_FAIL;
+}
 
-    /* Falta o handler para o magnetômetro. */
+ uint8_t data_ready = 0x00; // Buffer to store data ready status
+    do{
+//esp_err_t readRegFromDeviceWithHandle(i2c_master_dev_handle_t dev_handle, uint8_t reg_address, uint8_t* data, size_t length);
+        i2cManager->readRegFromDeviceWithHandle(*MPU9250_mag_handle_ptr, MPU9250_MAG_DATA_RDY, &data_ready, 1); // Read data ready status
+        } while((data_ready & 0x01) == 0); // Wait for data ready bit to be set
 
-    //ret2 = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_I2C_SLV0_REG, &AK8963_CNTL1, 1); // configura o registro de controle do AK8963
+// Read magnetometer data
+uint8_t raw_data[6]; //6 for magnetometer data 
+if (i2cManager->readRegFromDeviceWithHandle(*MPU9250_mag_handle_ptr, MPU9250_MAG_HXL, raw_data, 6) == ESP_OK) {
+    magData.x = (float)(((int16_t)((raw_data[1] << 8) | raw_data[0])) * magScale);
+    magData.y = (float)(((int16_t)((raw_data[3] << 8) | raw_data[2])) * magScale);
+    magData.z = (float)(((int16_t)((raw_data[5] << 8) | raw_data[4])) * magScale);
+} else {
+    ESP_LOGE("MPU9250", "Failed to read magnetometer data");
+    return ESP_FAIL;
+}
+// Disable pass-through mode
 
-
+pass_through = 0x00;
+i2cManager->writeRegToDeviceWithHandle(*MPU9250_mag_handle_ptr, MPU9250_INT_PIN_CFG, &pass_through, 1);    // Turn-off PASS_THROUGH mode - Para ativar o Magnetómetro
+return ESP_OK;
 }
 		
 esp_err_t MPU9250::magGetRead(){
 
-    /* Falta implementar */
+    ESP_LOGI(TAG, "Magnetometer Data (uT): X: %.2f Y: %.2f Z: %.2f", magData.x, magData.y, magData.z);
 
     return ESP_OK;
 }
