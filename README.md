@@ -5,16 +5,16 @@
 - [x] Configure MPU9250 gyroscope.
 - [x] Read gyro.
 - [x] Calibrate gyro (only bias).
-- [ ] Configure MPU9250 accelerometer.
-- [ ] Read acc.
-- [ ] Install Eigen.
-- [ ] Test Eigen.
-- [ ] Calibrate acc.
-- [ ] Read temperature.
-- [ ] Calibrate temp.
+- [x] Configure MPU9250 accelerometer.
+- [x] Read acc.
+- [x] Read temperature.
+- [x] Calibrate temp.
 - [ ] Configure MPU9250 magnetometer.
 - [ ] Read mag.
 - [ ] Calibrate mag.
 - [ ] python plot app.
+- [ ] Install Eigen.
+- [ ] Test Eigen.
+- [ ] Calibrate acc.
 - [ ] Kalman filter.
 - [ ] sensor fusion.

@@ -16,6 +16,8 @@
             "name": "esp-idf",
             "includePath": [
                 "${workspaceFolder}/**",
+                "${workspaceFolder}/components/**",
+                "${workspaceFolder}/components/**/**",
                 "${workspaceFolder}/build/esp-idf/**/**",
                 "${env:IDF_PATH}/components/**"
             ],

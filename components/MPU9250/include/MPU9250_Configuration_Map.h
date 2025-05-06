@@ -60,5 +60,7 @@
 //#define MPU9250_ACCEL_CONFIG_FS_SEL_MASK 0x18 // Mask for FS_SEL bits in the accelerometer configuration register
 //#define MPU9250_ACCEL_CONFIG_FS_SEL_POS  3 // Position of FS_SEL bits in the accelerometer configuration register
 
+#define PASS_THROUGH_MODE 0x02 // Pass-through mode
+
 #endif // MPU9250_CONFIGURATION_MAP_H
 //

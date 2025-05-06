@@ -13,9 +13,8 @@
 
 #define TAG "MPU9250"
 
-#define MPU9250_ADDRESS		0x68 // Endereço I2C do MPU9250
-
-
+#define MPU9250_ADDRESS				0x68 // Endereço I2C do MPU9250
+#define MPU9250_MAGNETOMETER_ADDR	0x0C // Endereço I2C do AK8963 (magnetômetro)
 
 #ifdef __cplusplus
 extern "C" {
@@ -36,37 +35,58 @@ class MPU9250 {
 
 		MPU9250(I2CManager* i2cManager);
 		~MPU9250();
-
 		esp_err_t init();
+		esp_err_t MPU9250Reset();
 
-		esp_err_t gyroReset();
-		esp_err_t gyroConfig(uint8_t fullScaleSel, uint8_t enableFilter, uint8_t gyroDlpfCfg);
-		esp_err_t gyroCalibrate();
-		esp_err_t gyroRead();
-		esp_err_t gyroGetRead();
-		void getGyroFullScale();
+		esp_err_t gyrConfig(uint8_t fullScaleSel, uint8_t enableFilter, uint8_t gyroDlpfCfg);
+		esp_err_t gyrCalibrate();
+		esp_err_t gyrRead();
+		esp_err_t gyrGetRead();
+		void getGyrFullScale();
 
-	
+		esp_err_t accConfig(uint8_t fullScaleSel, uint8_t accelDlpfCfg);
+		esp_err_t accRead();
+		esp_err_t accCalibrate();
+		esp_err_t accGetRead();
+
+        esp_err_t temRead();
+		esp_err_t temGetRead();
+
+		esp_err_t magConfig();
+		esp_err_t magRead();
+		esp_err_t magGetRead();
+
 	private:
 
+		//	Configuração do I2C
 		I2CManager* i2cManager;
 		uint8_t deviceAddress = MPU9250_ADDRESS;
 		i2c_master_dev_handle_t* MPU9250_handle_ptr = nullptr;
+		i2c_master_dev_handle_t* MPU9250_mag_handle_ptr = nullptr;
 
-		uint8_t gyroFullScale = 0;
-		bool gyroCalibrated = false;
-		bool gyroCalibrationInProgress = false;
-		float scale = 0.0f;
+		// Giroscópio
 		Vec3f gyroData;
 		Vec3f gyroBias;
+		float gyrScale = 0.0f;
+		uint8_t gyrFullScale = 0;
+		bool gyrCalibrated = false;
+		bool gyrCalibrationInProgress = false;
 
-		Vec3f accelData;
+		// Acelerômetro
+		Vec3f accData;
+		float accScale = 0.0f;
+		uint8_t accFullScale = 0;
+		uint8_t accDlpfSel = 0;
+
+		// Temperatura
+		float temData = 0.0f;
+		
+		// Magnetômetro
 		Vec3f magData;
 
     };
 
-	
-	};
+};
 
 #ifdef __cplusplus
 

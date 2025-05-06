@@ -24,18 +24,28 @@ extern "C" void app_main(void)
     // Inicializa o barramento I2C
     I2CManager i2cManager;
     //i2cManager.scanI2CDevices();
-    i2cManager.addDevice(MPU9250_ADDRESS); 
-    
+    i2cManager.addDevice(MPU9250_ADDRESS);
+    i2cManager.addDevice(MPU9250_MAGNETOMETER_ADDR);
+
     MPU9250 mpu9250(&i2cManager);
+    
     // Testando as configuracões do giro.
-    mpu9250.gyroConfig(MPU9250_GYRO_FS_SEL_1000,  MPU9250_FCHOICE_B_GYRO_FILTER_ENABLED, MPU9250_GYRO_DLPF_CFG_20HZ);
-    mpu9250.gyroCalibrate();
+    mpu9250.gyrConfig(MPU9250_GYRO_FS_SEL_1000,  MPU9250_FCHOICE_B_GYRO_FILTER_ENABLED, MPU9250_GYRO_DLPF_CFG_20HZ);
+    mpu9250.gyrCalibrate();
+
+    // Testando conf do acelerômetro.
+    mpu9250.accConfig(MPU9250_ACCEL_FS_SEL_4, MPU9250_ACCEL_NO_FIL_BW_1046Hz);
 
     while(1){
-        mpu9250.gyroRead();
-        mpu9250.gyroGetRead();
+        mpu9250.gyrRead();
+        mpu9250.gyrGetRead();
+        mpu9250.accRead();
+        mpu9250.accGetRead();
+        mpu9250.temRead();
+        mpu9250.temGetRead();
+
         vTaskDelay(pdMS_TO_TICKS(250));
     }
-    // mpu9250.getGyroFullScale();
+    // mpu9250.getGyrFullScale();
     //  i2cManager.deInit();
 }
