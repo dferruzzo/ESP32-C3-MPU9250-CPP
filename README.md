@@ -16,3 +16,5 @@
 - [ ] Read mag.
 - [ ] Calibrate mag.
 - [ ] python plot app.
+- [ ] Kalman filter.
+- [ ] sensor fusion.
