@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "freertosconfig.h": "c",
+        "freertosconfig_arch.h": "c"
+    }
+}
