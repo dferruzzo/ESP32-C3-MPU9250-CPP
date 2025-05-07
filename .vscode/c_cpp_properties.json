@@ -4,38 +4,14 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${env:IDF_PATH}/components/**"
+                "${config:idf.espIdfPath}/components/**"
             ],
             "defines": [],
-            "compilerPath": "/usr/bin/gcc",
+            "compilerPath": "${env:HOME}/.espressif/tools/riscv32-esp-elf/esp-14.2.0_20241119/riscv32-esp-elf/bin/riscv32-esp-elf-gcc",
             "cStandard": "c17",
             "cppStandard": "gnu++17",
             "intelliSenseMode": "linux-gcc-x64"
         },
-        {
-            "name": "esp-idf",
-            "includePath": [
-                "${workspaceFolder}/**",
-                "${workspaceFolder}/components/**",
-                "${workspaceFolder}/components/**/**",
-                "${workspaceFolder}/build/esp-idf/**/**",
-                "${env:IDF_PATH}/components/**"
-            ],
-            "defines": [],
-            "compilerPath": "${env:IDF_PATH}/tools/idf.py",
-            "cStandard": "c17",
-            "cppStandard": "gnu++17",
-            "intelliSenseMode": "linux-gcc-x64",
-            "compilerPathInCppPropertiesJson": "/usr/bin/gcc",
-            "mergeConfigurations": false,
-            "recursiveIncludes": {},
-            "browse": {
-                "limitSymbolsToIncludedHeaders": true
-            },
-            "compileCommands": [
-                "${workspaceFolder}/build/compile_commands.json"
-            ]
-        }
     ],
     "version": 4
 }
