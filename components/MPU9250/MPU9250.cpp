@@ -179,6 +179,12 @@ esp_err_t MPU9250::gyrCalibrate(){
         return ESP_FAIL;
     }
 
+    ESP_LOGI(TAG, "*******************************************************");
+    ESP_LOGI(TAG, "Iniciando a calibração do giroscópio...");
+    ESP_LOGI(TAG, "*******************************************************");
+    ESP_LOGI(TAG, "Coloque o giroscópio em uma superfície plana e estável.");
+    timer(5);
+
     // Reset calibration flags and bias values
     gyrCalibrated = false;
     gyrCalibrationInProgress = true;
@@ -208,6 +214,8 @@ esp_err_t MPU9250::gyrCalibrate(){
 
 
     ESP_LOGI(TAG, "Gyroscope bias: X: %.2f Y: %.2f Z: %.2f", gyroBias.x, gyroBias.y, gyroBias.z);
+    timer(2);
+
 
     // Finaliza o processo de calibração
     gyrCalibrated = true;

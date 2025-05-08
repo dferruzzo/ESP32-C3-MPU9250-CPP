@@ -78,14 +78,14 @@ class MPU9250 {
 		uint8_t gyrFullScale = 0;
 		bool gyrCalibrated = false;
 		bool gyrCalibrationInProgress = false;
-		uint16_t gyroNumSamples = 500; // Inicializado com 0
+		//uint16_t gyroNumSamples = 500; // Inicializado com 0
 
                 // Acelerômetro
 		Vec3f accData = Vec3f(0.0f, 0.0f, 0.0f);
 		float accScale = 0.0f;
 		uint8_t accFullScale = 0;
 		uint8_t accDlpfSel = 0;
-        int8_t accNumSamplesCal = 10;	// Número de amostras para calibração do acc.
+		int8_t accNumSamplesCal = 10;	// Número de amostras para calibração do acc.
 		int8_t accFactorCal = 10; // Fator de escala para os dados do acelerômetro durante a calibragem
 		bool accCalibrated = false;
 		bool accCalibrationInProgress = false;
