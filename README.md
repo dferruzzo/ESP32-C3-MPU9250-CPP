@@ -14,7 +14,7 @@
 - [x] python plot app.
 - [x] Install Eigen.
 - [x] Test Eigen.
-- [ ] Calibrate acc.
+- [x] Calibrate acc.
     - [x] Calcular matriz Y.
     - [x] Calcular matriz W.
 - [ ] Calibrate mag.
