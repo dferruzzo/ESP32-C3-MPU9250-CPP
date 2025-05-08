@@ -46,6 +46,10 @@ esp_err_t MPU9250::init() {
         return ESP_FAIL;
     }
     ESP_LOGI(TAG, "MPU9250 initialized successfully");
+
+    // Init variables
+    accCalibrationMatrix = Eigen::MatrixXf::Zero(4, 3);
+
     return ESP_OK;
 }
 
@@ -137,26 +141,32 @@ esp_err_t MPU9250::gyrRead(){
     
     // Lê os dados do giroscópio
     uint8_t raw_data[6];
+    Vec3f gyrRawData = Vec3f(0.0f, 0.0f, 0.0f);
 
     if (i2cManager->readRegFromDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_GYRO_XOUT_H, raw_data, 6)==ESP_OK){
 
-        if (gyrCalibrationInProgress){
+        gyrRawData.x = (float)(((int16_t)((raw_data[0] << 8) | raw_data[1])) * gyrScale);
+        gyrRawData.y = (float)(((int16_t)((raw_data[2] << 8) | raw_data[3])) * gyrScale);
+        gyrRawData.z = (float)(((int16_t)((raw_data[4] << 8) | raw_data[5])) * gyrScale);
 
-            gyroData.x = (float)(((int16_t)((raw_data[0] << 8) | raw_data[1])) * gyrScale);
-            gyroData.y = (float)(((int16_t)((raw_data[2] << 8) | raw_data[3])) * gyrScale);
-            gyroData.z = (float)(((int16_t)((raw_data[4] << 8) | raw_data[5])) * gyrScale);        
-
-        } else {
-
-            gyroData.x = -gyroBias.x + (float)(((int16_t)((raw_data[0] << 8) | raw_data[1])) * gyrScale);
-            gyroData.y = -gyroBias.y + (float)(((int16_t)((raw_data[2] << 8) | raw_data[3])) * gyrScale);
-            gyroData.z = -gyroBias.z + (float)(((int16_t)((raw_data[4] << 8) | raw_data[5])) * gyrScale);
-    
-        }
     } else {
         ESP_LOGE(TAG, "Failed to read gyroscope data");
         return ESP_FAIL;
     }
+
+    if (gyrCalibrationInProgress){
+
+        gyroData.x = gyrRawData.x;
+        gyroData.y = gyrRawData.y;
+        gyroData.z = gyrRawData.z;
+
+    } else {
+
+        gyroData.x = -gyroBias.x + gyrRawData.x;
+        gyroData.y = -gyroBias.y + gyrRawData.y;
+        gyroData.z = -gyroBias.z + gyrRawData.z;
+
+    }   
     
     return ESP_OK;
 }
@@ -172,12 +182,13 @@ esp_err_t MPU9250::gyrCalibrate(){
     // Reset calibration flags and bias values
     gyrCalibrated = false;
     gyrCalibrationInProgress = true;
+
     gyroBias.x = 0.0f;
     gyroBias.y = 0.0f;
     gyroBias.z = 0.0f;
 
     ESP_LOGI(TAG, "*******************************************************");
-    for (uint16_t i = 0; i < gyroNumSamples; i++) {
+    for (int i = 0; i < 100; i++) {
     
     if (gyrRead() != ESP_OK) {
             ESP_LOGE(TAG, "Failed to read gyroscope data during calibration at sample %d", i);
@@ -194,6 +205,7 @@ esp_err_t MPU9250::gyrCalibrate(){
     gyroBias.x /= 100.0f;
     gyroBias.y /= 100.0f;
     gyroBias.z /= 100.0f;
+
 
     ESP_LOGI(TAG, "Gyroscope bias: X: %.2f Y: %.2f Z: %.2f", gyroBias.x, gyroBias.y, gyroBias.z);
 
@@ -285,7 +297,7 @@ esp_err_t MPU9250::accRead() {
             Eigen::RowVector4f accVec;
             accVec << accData.x, accData.y, accData.z, 1.0f; // Última coluna igual a 1
             
-            Eigen::RowVector3f result = accVec * (*A);
+            Eigen::RowVector3f result = accVec * accCalibrationMatrix;
             accData.x = result(0);
             accData.y = result(1);
             accData.z = result(2);
@@ -310,25 +322,23 @@ esp_err_t MPU9250::accGetRead() {
 esp_err_t MPU9250::accCalibrate() { 
     
     accCalibrationInProgress = true;
- 
+    
     // Create matrix Y 
-    // Create calibration matrix Y for 6 orientations (+/-X, +/-Y, +/-Z)
     Eigen::MatrixXf Y(6 * accNumSamplesCal, 3);
-    Y.setZero();
+    Y.setZero(); // Optional: initialize all elements to zero
+    
+    // Create an empty matrix W with 6*numSamples rows and 4 columns
+    Eigen::MatrixXf W(6 * accNumSamplesCal, 4);
+    W.setZero(); // Optional: initialize all elements to zero
 
+    // Populate matrix Y
     for (int i = 0; i < 6; ++i) {
         int axis = i / 2;                // 0: X, 1: Y, 2: Z
         float sign = (i % 2 == 0) ? 1.0f : -1.0f; // Even: +1, Odd: -1
         Y.block(i * accNumSamplesCal, 0, accNumSamplesCal, 3).col(axis).setConstant(sign);
     }
-    // Now Y has 6 blocks, each with accNumSamplesCal rows, with the appropriate axis set to +1 or -1
 
-    std::cout << "Y = " << std::endl << Y << std::endl;
-
-
-    // Create an empty matrix W with 6*numSamples rows and 4 columns
-    Eigen::MatrixXf W(6 * accNumSamplesCal, 4);
-    W.setZero(); // Optional: initialize all elements to zero
+    //std::cout << "Y = " << std::endl << Y << std::endl;
 
     ESP_LOGI(TAG, "*******************************************************");
     ESP_LOGI(TAG, "Iniciando a calibração do acelerômetro...");
@@ -498,7 +508,7 @@ esp_err_t MPU9250::accCalibrate() {
     Eigen::MatrixXf WtW = Wt * W;
     Eigen::MatrixXf WtW_inv = WtW.inverse();
     Eigen::MatrixXf WtY = Wt * Y;
-    *A = WtW_inv * WtY;
+    accCalibrationMatrix = WtW_inv * WtY;
     
     //std::cout << "A = " << std::endl << *A << std::endl;
 

@@ -23,7 +23,8 @@
         "chrono": "cpp",
         "functional": "cpp",
         "algorithm": "cpp",
-        "format": "cpp"
+        "format": "cpp",
+        "new": "cpp"
     },
     "idf.port": "/dev/ttyACM0",
     "idf.flashType": "UART"
