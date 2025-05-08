@@ -58,6 +58,8 @@ class MPU9250 {
 		esp_err_t magRead();
 		esp_err_t magGetRead();
 
+		void timer(uint8_t seconds);
+
 		void printDataToTerminal();
 
 	private:
@@ -70,25 +72,31 @@ class MPU9250 {
 		i2c_master_dev_handle_t* MPU9250_mag_handle_ptr = nullptr;
 
 		// Giroscópio
-		Vec3f gyroData;
-		Vec3f gyroBias;
+		Vec3f gyroData = Vec3f(0.0f, 0.0f, 0.0f);
+		Vec3f gyroBias = Vec3f(0.0f, 0.0f, 0.0f);
 		float gyrScale = 0.0f;
 		uint8_t gyrFullScale = 0;
 		bool gyrCalibrated = false;
 		bool gyrCalibrationInProgress = false;
+		uint16_t gyroNumSamples = 100; // Inicializado com 0
 
-		// Acelerômetro
-		Vec3f accData;
+                // Acelerômetro
+		Vec3f accData = Vec3f(0.0f, 0.0f, 0.0f);
 		float accScale = 0.0f;
 		uint8_t accFullScale = 0;
 		uint8_t accDlpfSel = 0;
+        int8_t accNumSamplesCal = 10;	// Número de amostras para calibração do acc.
+		int8_t accFactorCal = 2; // Fator de escala para os dados do acelerômetro durante a calibragem
+		bool accCalibrated = false;
+		bool accCalibrationInProgress = false;
+		Eigen::MatrixXf* A = new Eigen::MatrixXf(Eigen::MatrixXf::Zero(4, 3)); // Matriz de calibração do acelerômetro
 
-		// Temperatura
+        // Temperatura
 		float temData = 0.0f;
 		
 		// Magnetômetro
 		float magScale = 0.1465f;
-        Vec3f magData;
+        Vec3f magData = Vec3f(0.0f, 0.0f, 0.0f);;
     };
 
 };

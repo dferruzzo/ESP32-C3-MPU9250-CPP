@@ -13,8 +13,10 @@
 - [x] Read mag.
 - [x] python plot app.
 - [x] Install Eigen.
-- [ ] Test Eigen.
+- [x] Test Eigen.
 - [ ] Calibrate acc.
+    - [x] Calcular matriz Y.
+    - [x] Calcular matriz W.
 - [ ] Calibrate mag.
 - [ ] Kalman filter.
 - [ ] sensor fusion.

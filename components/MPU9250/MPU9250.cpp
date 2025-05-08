@@ -15,19 +15,19 @@ esp_err_t MPU9250::init() {
     // Inicializa o dispositivo MPU9250
     MPU9250_handle_ptr = i2cManager->isDeviceInConfig(deviceAddress);
     if (MPU9250_handle_ptr == nullptr) {
-        ESP_LOGE("MPU9250", "Device not found in I2C configuration. Address: 0x%02X", deviceAddress);
+        ESP_LOGE(TAG, "Device not found in I2C configuration. Address: 0x%02X", deviceAddress);
         return ESP_FAIL;
     } else {
-        ESP_LOGI("MPU9250", "Device  0x%02X found in I2C configuration %p:", deviceAddress, MPU9250_handle_ptr);
+        ESP_LOGI(TAG, "Device  0x%02X found in I2C configuration %p:", deviceAddress, MPU9250_handle_ptr);
     }
 
     MPU9250_mag_handle_ptr = i2cManager->isDeviceInConfig(deviceAddressMag);
 
     if (MPU9250_mag_handle_ptr == nullptr) {
-        ESP_LOGE("MPU9250", "Device not found in I2C configuration. Address: 0x%02X", deviceAddressMag);
+        ESP_LOGE(TAG, "Device not found in I2C configuration. Address: 0x%02X", deviceAddressMag);
         return ESP_FAIL;
     } else {
-        ESP_LOGI("MPU9250", "Device  0x%02X found in I2C configuration %p:", deviceAddressMag, MPU9250_mag_handle_ptr);
+        ESP_LOGI(TAG, "Device  0x%02X found in I2C configuration %p:", deviceAddressMag, MPU9250_mag_handle_ptr);
     }
 
     // Reset MPU9250
@@ -38,27 +38,33 @@ esp_err_t MPU9250::init() {
     esp_err_t ret = i2cManager->readRegFromDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_WHO_AM_I, data, 1);
 
     if (ret != ESP_OK) {
-        ESP_LOGE("MPU9250", "Failed to read WHO_AM_I register");
+        ESP_LOGE(TAG, "Failed to read WHO_AM_I register");
         return ret;
     }
     if (data[0] != 0x71) { // Verifica o ID do dispositivo
-        ESP_LOGE("MPU9250", "Invalid device ID: 0x%02X", data[0]);
+        ESP_LOGE(TAG, "Invalid device ID: 0x%02X", data[0]);
         return ESP_FAIL;
     }
-    ESP_LOGI("MPU9250", "MPU9250 initialized successfully");
+    ESP_LOGI(TAG, "MPU9250 initialized successfully");
     return ESP_OK;
 }
 
 esp_err_t MPU9250::MPU9250Reset(){
     // Reseta o giroscópio
 
+    if (MPU9250_handle_ptr == nullptr) {
+        ESP_LOGE(TAG, "MPU9250_handle_ptr is null, cannot reset gyroscope");
+        return ESP_FAIL;
+    }
+
     uint8_t data = 1 << MPU9250_RESET_BIT; // Bit de reset
     esp_err_t ret = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_PWR_MGMT_1, &data, 1);
     if (ret != ESP_OK) {
-        ESP_LOGE("MPU9250", "Failed to reset gyroscope");
+        ESP_LOGE(TAG, "Failed to reset gyroscope");
         return ret;
     }
-    ESP_LOGI("MPU9250", "Gyroscope reset successfully");
+    ESP_LOGI(TAG, "Gyroscope reset successfully");
+    vTaskDelay(100 / portTICK_PERIOD_MS); // Wait 100ms for reset to complete
     return ESP_OK;
 
 }
@@ -148,7 +154,7 @@ esp_err_t MPU9250::gyrRead(){
     
         }
     } else {
-        ESP_LOGE("MPU9250", "Failed to read gyroscope data");
+        ESP_LOGE(TAG, "Failed to read gyroscope data");
         return ESP_FAIL;
     }
     
@@ -163,13 +169,22 @@ esp_err_t MPU9250::gyrCalibrate(){
         return ESP_FAIL;
     }
 
+    // Reset calibration flags and bias values
+    gyrCalibrated = false;
     gyrCalibrationInProgress = true;
     gyroBias.x = 0.0f;
     gyroBias.y = 0.0f;
     gyroBias.z = 0.0f;
 
-    for (int i = 0; i < 100; i++) {
-        gyrRead();
+    ESP_LOGI(TAG, "*******************************************************");
+    for (uint16_t i = 0; i < gyroNumSamples; i++) {
+    
+    if (gyrRead() != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to read gyroscope data during calibration at sample %d", i);
+            // Optionally: break or retry this iteration
+            return ESP_FAIL;
+        }
+
         gyroBias.x += gyroData.x;
         gyroBias.y += gyroData.y;
         gyroBias.z += gyroData.z;
@@ -183,8 +198,8 @@ esp_err_t MPU9250::gyrCalibrate(){
     ESP_LOGI(TAG, "Gyroscope bias: X: %.2f Y: %.2f Z: %.2f", gyroBias.x, gyroBias.y, gyroBias.z);
 
     // Finaliza o processo de calibração
-    gyrCalibrationInProgress = false;
     gyrCalibrated = true;
+    gyrCalibrationInProgress = false;
 
     return ESP_OK;  
 
@@ -244,15 +259,42 @@ esp_err_t MPU9250::accConfig(uint8_t fullScaleSel, uint8_t accelDlpfCfg){
 
 esp_err_t MPU9250::accRead() { 
     
+    if (!accCalibrated && !accCalibrationInProgress) {
+        ESP_LOGW(TAG, "Accelerometer calibration not completed. Please calibrate the accelerometer first.");
+        //return ESP_FAIL;
+    }
+
     // Lê os dados do acelerômetro
     uint8_t raw_data[6];
-    if (i2cManager->readRegFromDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_ACCEL_XOUT_H, raw_data, 6) == ESP_OK) {
-        accData.x = (float)(((int16_t)((raw_data[0] << 8) | raw_data[1])) * accScale);
-        accData.y = (float)(((int16_t)((raw_data[2] << 8) | raw_data[3])) * accScale);
-        accData.z = (float)(((int16_t)((raw_data[4] << 8) | raw_data[5])) * accScale);
-    } else {
-        ESP_LOGE("MPU9250", "Failed to read accelerometer data");
-        return ESP_FAIL;
+    if (accCalibrationInProgress){
+        if (i2cManager->readRegFromDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_ACCEL_XOUT_H, raw_data, 6) == ESP_OK) {
+            accData.x = (float)(((int16_t)((raw_data[0] << 8) | raw_data[1])) * accScale);
+            accData.y = (float)(((int16_t)((raw_data[2] << 8) | raw_data[3])) * accScale);
+            accData.z = (float)(((int16_t)((raw_data[4] << 8) | raw_data[5])) * accScale);
+        } else {
+            ESP_LOGE(TAG, "Failed to read accelerometer data");
+            return ESP_FAIL;
+        }
+    } else{
+
+        if (i2cManager->readRegFromDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_ACCEL_XOUT_H, raw_data, 6) == ESP_OK) {
+            accData.x = (float)(((int16_t)((raw_data[0] << 8) | raw_data[1])) * accScale);
+            accData.y = (float)(((int16_t)((raw_data[2] << 8) | raw_data[3])) * accScale);
+            accData.z = (float)(((int16_t)((raw_data[4] << 8) | raw_data[5])) * accScale);
+
+            Eigen::RowVector4f accVec;
+            accVec << accData.x, accData.y, accData.z, 1.0f; // Última coluna igual a 1
+            
+            Eigen::RowVector3f result = accVec * (*A);
+            accData.x = result(0);
+            accData.y = result(1);
+            accData.z = result(2);
+
+        } else {
+            ESP_LOGE("MPU9250", "Failed to read accelerometer data");
+            return ESP_FAIL;
+        }
+
     }
 
     return ESP_OK; 
@@ -267,93 +309,201 @@ esp_err_t MPU9250::accGetRead() {
 
 esp_err_t MPU9250::accCalibrate() { 
     
-    /* 
-    Falta implementar
-    Precisa EIGEN
-    */
+    accCalibrationInProgress = true;
+ 
+    // Create matrix Y 
+    // Create calibration matrix Y for 6 orientations (+/-X, +/-Y, +/-Z)
+    Eigen::MatrixXf Y(6 * accNumSamplesCal, 3);
+    Y.setZero();
 
-    /* teste */
-    Eigen::MatrixXf M(2, 2);
-    Eigen::MatrixXf V(2, 2);
-    for (int i = 0; i <= 1; i++) {
-        for (int j = 0; j <= 1; j++) {
-            M(i, j) = 1;
-            V(i, j) = 2;
-        }
+    for (int i = 0; i < 6; ++i) {
+        int axis = i / 2;                // 0: X, 1: Y, 2: Z
+        float sign = (i % 2 == 0) ? 1.0f : -1.0f; // Even: +1, Odd: -1
+        Y.block(i * accNumSamplesCal, 0, accNumSamplesCal, 3).col(axis).setConstant(sign);
     }
-    Eigen::MatrixXf Result = M * V;
-    std::cout << "MatrixXf Result = " << std::endl << Result << std::endl;
+    // Now Y has 6 blocks, each with accNumSamplesCal rows, with the appropriate axis set to +1 or -1
 
-    /*
-    Algoritmo
+    std::cout << "Y = " << std::endl << Y << std::endl;
 
-    1. Coletar N amostras de dados do acelerômetro em repouso com:
-        
-        - o eixo x apontando para abaixo.
-        - o eixo x apontando para acima.
-        - o eixo y apontando para baixo.
-        - o eixo y apontando para cima.
-        - o eixo z apontando para baixo.
-        - o eixo z apontando para cima.
+
+    // Create an empty matrix W with 6*numSamples rows and 4 columns
+    Eigen::MatrixXf W(6 * accNumSamplesCal, 4);
+    W.setZero(); // Optional: initialize all elements to zero
+
+    ESP_LOGI(TAG, "*******************************************************");
+    ESP_LOGI(TAG, "Iniciando a calibração do acelerômetro...");
+    ESP_LOGI(TAG, "*******************************************************");
+
+    // Collecting N Samples with x-axis pointing downwards
+    ESP_LOGI(TAG,
+            "Coloque o acelerômetro com o eixo x apontando para cima e mantenha essa posição.");
+    timer(5);
+    ESP_LOGI(TAG, "Coletando amostras...");
+
+    int count = 0;
+    while (count < accNumSamplesCal) {
+
+        accRead();  // Lê os dados do acelerômetro
+        if ((accData.x > 0) && 
+        (accData.x > (float)(accFactorCal*std::abs(accData.y))) && 
+        (accData.x > (float)(accFactorCal*std::abs(accData.z))))
+        {  // Adicionar que o módulo de x seja maior que o modulo de y e o modulo de z
+            W(count, 0) = accData.x;
+            W(count, 1) = accData.y;
+            W(count, 2) = accData.z;
+            W(count, 3) = 1.0f;  // Última coluna igual a 1
+            count++;
+        } else {
+            ESP_LOGI(TAG, "Eixo x não está apontando para cima.");
+        }
+        vTaskDelay(5 / portTICK_PERIOD_MS);  // Delay de 10ms entre as leituras
+        // Caso contrário, rejeita a amostra e não incrementa count
+    }
+    ESP_LOGI(TAG, "Amostras coletadas: %d", count);
+    ESP_LOGI(TAG, "*******************************************************");
+    ESP_LOGI(TAG, "Coloque o acelerômetro com o eixo x apontando para baixo e mantenha essa posição.");
+    timer(5);
+    ESP_LOGI(TAG, "Coletando amostras...");
+    count = 0;
+    while (count < accNumSamplesCal) {
+
+        accRead();  // Lê os dados do acelerômetro
+        if ((accData.x < 0) && 
+        (accData.x < (float)(-accFactorCal*std::abs(accData.y))) && 
+        (accData.x < (float)(-accFactorCal*std::abs(accData.z))))
+        {  // Adicionar que o módulo de x seja maior que o modulo de y e o modulo de z
+            W(count + accNumSamplesCal, 0) = accData.x;
+            W(count + accNumSamplesCal, 1) = accData.y;
+            W(count + accNumSamplesCal, 2) = accData.z;
+            W(count + accNumSamplesCal, 3) = 1.0f;  // Última coluna igual a 1
+            count++;
+        } else {
+            ESP_LOGI(TAG, "Eixo x não está apontando para baixo.");
+        }
+        vTaskDelay(5 / portTICK_PERIOD_MS);  // Delay de 10ms entre as leituras
+        // Caso contrário, rejeita a amostra e não incrementa count
+    }
+    ESP_LOGI(TAG, "Amostras coletadas: %d", count);
+    ESP_LOGI(TAG, "*******************************************************");
+    // Collecting N Samples with y-axis pointing downwards
+    ESP_LOGI(TAG,
+            "Coloque o acelerômetro com o eixo y apontando para cima e mantenha essa posição.");
+    timer(5);
+    ESP_LOGI(TAG, "Coletando amostras...");
+    count = 0;
+    while (count < accNumSamplesCal) {
+
+        accRead();  // Lê os dados do acelerômetro
+        if ((accData.y > 0) && 
+        (accData.y > (float)(accFactorCal*std::abs(accData.x))) && 
+        (accData.y > (float)(accFactorCal*std::abs(accData.z))))
+        {  // Adicionar que o módulo de y seja maior que o modulo de x e o modulo de z
+            W(count + 2 * accNumSamplesCal, 0) = accData.x;
+            W(count + 2 * accNumSamplesCal, 1) = accData.y;
+            W(count + 2 * accNumSamplesCal, 2) = accData.z;
+            W(count + 2 * accNumSamplesCal, 3) = 1.0f;  // Última coluna igual a 1
+            count++;
+        } else {
+            ESP_LOGI(TAG, "Eixo y não está apontando para cima.");
+        }
+        vTaskDelay(5 / portTICK_PERIOD_MS);  // Delay de 10ms entre as leituras
+        // Caso contrário, rejeita a amostra e não incrementa count
+    }
+    ESP_LOGI(TAG, "Amostras coletadas: %d", count);
+    ESP_LOGI(TAG, "*******************************************************");
+    ESP_LOGI(TAG, "Coloque o acelerômetro com o eixo y apontando para baixo e mantenha essa posição.");
+    timer(5);
+    ESP_LOGI(TAG, "Coletando amostras...");
+    count = 0;
+    while (count < accNumSamplesCal) {
+
+        accRead();  // Lê os dados do acelerômetro
+        if ((accData.y < 0) && 
+        (accData.y < (float)(-accFactorCal*std::abs(accData.x))) && 
+        (accData.y < (float)(-accFactorCal*std::abs(accData.z))))
+        {  // Adicionar que o módulo de y seja maior que o modulo de x e o modulo de z
+            W(count + 3 * accNumSamplesCal, 0) = accData.x;
+            W(count + 3 * accNumSamplesCal, 1) = accData.y;
+            W(count + 3 * accNumSamplesCal, 2) = accData.z;
+            W(count + 3 * accNumSamplesCal, 3) = 1.0f;  // Última coluna igual a 1
+            count++;
+        } else {
+            ESP_LOGI(TAG, "Eixo y não está apontando para baixo.");
+        }
+        vTaskDelay(5 / portTICK_PERIOD_MS);  // Delay de 10ms entre as leituras
+        // Caso contrário, rejeita a amostra e não incrementa count
+    }
+    ESP_LOGI(TAG, "Amostras coletadas: %d", count);
+    ESP_LOGI(TAG, "*******************************************************");
+    // Collecting N Samples with z-axis pointing downwards
+    ESP_LOGI(TAG,
+            "Coloque o acelerômetro com o eixo z apontando para cima e mantenha essa posição.");
+    timer(5);
+    ESP_LOGI(TAG, "Coletando amostras...");
+    count = 0;
+    while (count < accNumSamplesCal) {
+
+        accRead();  // Lê os dados do acelerômetro
+        if ((accData.z > 0) && 
+        (accData.z > (float)(accFactorCal*std::abs(accData.x))) && 
+        (accData.z > (float)(accFactorCal*std::abs(accData.y))))
+        {  // Adicionar que o módulo de z seja maior que o modulo de x e o modulo de y
+            W(count + 4 * accNumSamplesCal, 0) = accData.x;
+            W(count + 4 * accNumSamplesCal, 1) = accData.y;
+            W(count + 4 * accNumSamplesCal, 2) = accData.z;
+            W(count + 4 * accNumSamplesCal, 3) = 1.0f;  // Última coluna igual a 1
+            count++;
+        } else {
+            ESP_LOGI(TAG, "Eixo z não está apontando para cima.");
+        }
+        vTaskDelay(5 / portTICK_PERIOD_MS);  // Delay de 10ms entre as leituras
+        // Caso contrário, rejeita a amostra e não incrementa count
+    }
+    ESP_LOGI(TAG, "Amostras coletadas: %d", count);
+    ESP_LOGI(TAG, "*******************************************************");
+    ESP_LOGI(TAG, "Coloque o acelerômetro com o eixo z apontando para baixo e mantenha essa posição.");
+    timer(5);
+    ESP_LOGI(TAG, "Coletando amostras...");
+    count = 0;
+    while (count < accNumSamplesCal) {
+
+        accRead();  // Lê os dados do acelerômetro
+        if ((accData.z < 0) && 
+        (accData.z < (float)(-accFactorCal*std::abs(accData.x))) && 
+        (accData.z < (float)(-accFactorCal*std::abs(accData.y))))
+        {  // Adicionar que o módulo de z seja maior que o modulo de x e o modulo de y
+            W(count + 5 * accNumSamplesCal, 0) = accData.x;
+            W(count + 5 * accNumSamplesCal, 1) = accData.y;
+            W(count + 5 * accNumSamplesCal, 2) = accData.z;
+            W(count + 5 * accNumSamplesCal, 3) = 1.0f;  // Última coluna igual a 1
+            count++;
+        } else {
+            ESP_LOGI(TAG, "Eixo z não está apontando para baixo.");
+        }
+        vTaskDelay(5 / portTICK_PERIOD_MS);  // Delay de 10ms entre as leituras
+        // Caso contrário, rejeita a amostra e não incrementa count
+    }
+    ESP_LOGI(TAG, "Amostras coletadas: %d", count);
+    ESP_LOGI(TAG, "*******************************************************");
+    ESP_LOGI(TAG, "Calibração do acelerômetro concluída.");
+    ESP_LOGI(TAG, "*******************************************************");
+    timer(5);
+    // ESP_LOGI(TAG, "Matriz W:");
+
+    // Print the matrix W using Eigen    
+    //std::cout << "W = " << std::endl << W << std::endl;
+
+    // Calcula a matriz de calibragem
+    Eigen::MatrixXf Wt = W.transpose();
+    Eigen::MatrixXf WtW = Wt * W;
+    Eigen::MatrixXf WtW_inv = WtW.inverse();
+    Eigen::MatrixXf WtY = Wt * Y;
+    *A = WtW_inv * WtY;
     
-    2. Montar a matriz Y(6N x 3) com os dados coletados: 
+    //std::cout << "A = " << std::endl << *A << std::endl;
 
-        Y = [
-             1 0 0
-            ...
-             1 0 0
-            -1 0 0 
-            ...
-            -1 0 0
-             0 1 0
-            ...
-             0  1  0
-             0 -1  0
-            ...
-             0 -1  0
-             0  0  1
-             ...
-             0  0  1     
-             0  0 -1
-             ...
-             0  0 -1
-             ]
-
-    2. Montar a matriz W(6N x 4) com os dados coletados: 
-
-        W = [
-            x1 y1 z1 1
-            x2 y2 z2 1
-            ...
-            x6N y6N z6N 1
-        ]
-
-    3. computar a matriz 
-
-    Wb = (W^T x W)^(-1) x W^T X Y
-
-    Dimensionalmente temos:
-
-    (4 x 6N)(6N x 4)(4 x 6N) (6N x3) = (4 x 3)
-
-    4. Calcular a matriz de calibração:
-
-    [     M^T     ]
-    [             ]  = Wb
-    [ a_offset^T  ]    
-
-    5. As medições calibradas são obtidas:
-
-    ac^T = [ am^T 1 ] x [     M^T     ]
-                        [             ] 
-                        [ a_offset^T  ]
-
-    Dimensionalmente temos:
-
-    (1 x 3) = (1 x 4)(4 x 3) = (1 x 3)
-
-    */
-
+    accCalibrated = true;
+    accCalibrationInProgress = false;
     return ESP_OK; 
 }
 
@@ -365,7 +515,7 @@ esp_err_t MPU9250::temRead(){
         int16_t temp_raw = (int16_t)((raw_data[0] << 8) | raw_data[1]);
         temData = (temp_raw / 333.87f) + 21.00f; // Conversão para graus 
     } else {
-        ESP_LOGE("MPU9250", "Failed to read temperature data");
+        ESP_LOGE(TAG, "Failed to read temperature data");
         return ESP_FAIL;
     }
 
@@ -398,11 +548,21 @@ if (ret1 != ESP_OK || ret2 != ESP_OK) {
     return ESP_FAIL;
 }
 
- uint8_t data_ready = 0x00; // Buffer to store data ready status
-    do{
-//esp_err_t readRegFromDeviceWithHandle(i2c_master_dev_handle_t dev_handle, uint8_t reg_address, uint8_t* data, size_t length);
-        i2cManager->readRegFromDeviceWithHandle(*MPU9250_mag_handle_ptr, MPU9250_MAG_DATA_RDY, &data_ready, 1); // Read data ready status
-        } while((data_ready & 0x01) == 0); // Wait for data ready bit to be set
+uint8_t data_ready = 0x00;
+const int max_attempts = 100; // e.g., 100 attempts * 10ms = 1 second timeout
+int attempts = 0;
+while ((data_ready & 0x01) == 0 && attempts < max_attempts) {
+    if (i2cManager->readRegFromDeviceWithHandle(*MPU9250_mag_handle_ptr, MPU9250_MAG_DATA_RDY, &data_ready, 1) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to read magnetometer data ready status");
+        return ESP_FAIL;
+    }
+    vTaskDelay(pdMS_TO_TICKS(10));
+    attempts++;
+}
+if ((data_ready & 0x01) == 0) {
+    ESP_LOGE(TAG, "Timeout waiting for magnetometer data ready");
+    return ESP_FAIL;
+}
 
 // Read magnetometer data
 uint8_t raw_data[6]; //6 for magnetometer data 
@@ -411,7 +571,7 @@ if (i2cManager->readRegFromDeviceWithHandle(*MPU9250_mag_handle_ptr, MPU9250_MAG
     magData.y = (float)(((int16_t)((raw_data[3] << 8) | raw_data[2])) * magScale);
     magData.z = (float)(((int16_t)((raw_data[5] << 8) | raw_data[4])) * magScale);
 } else {
-    ESP_LOGE("MPU9250", "Failed to read magnetometer data");
+    ESP_LOGE(TAG, "Failed to read magnetometer data");
     return ESP_FAIL;
 }
 // Disable pass-through mode
@@ -437,4 +597,12 @@ void MPU9250::printDataToTerminal(){
                 accData.x, accData.y, accData.z,
                 magData.x, magData.y, magData.z,
                 temData);
+}
+
+void MPU9250::timer(uint8_t seconds){
+    // Timer de 10 segundos com exibição do tempo restante
+    for (int i = seconds; i > 0; --i) {
+        ESP_LOGI(TAG, "Aguardando... %d segundos restantes.", i);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
 }

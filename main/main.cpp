@@ -31,6 +31,7 @@ extern "C" void app_main(void)
     
     // Testando as configuracões do giro.
     mpu9250.gyrConfig(MPU9250_GYRO_FS_SEL_1000,  MPU9250_FCHOICE_B_GYRO_FILTER_ENABLED, MPU9250_GYRO_DLPF_CFG_20HZ);
+
     mpu9250.gyrCalibrate();
 
     // Testando conf do acelerômetro.
@@ -50,5 +51,6 @@ extern "C" void app_main(void)
 
         vTaskDelay(pdMS_TO_TICKS(250));
     }
+
     //  i2cManager.deInit();
 }

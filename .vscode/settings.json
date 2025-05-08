@@ -1,6 +1,30 @@
 {
     "files.associations": {
         "freertosconfig.h": "c",
-        "freertosconfig_arch.h": "c"
-    }
+        "freertosconfig_arch.h": "c",
+        "ostream": "cpp",
+        "iostream": "cpp",
+        "core": "cpp",
+        "superlusupport": "cpp",
+        "adolcforward": "cpp",
+        "alignedvector3": "cpp",
+        "autodiff": "cpp",
+        "bvh": "cpp",
+        "eulerangles": "cpp",
+        "fft": "cpp",
+        "kroneckerproduct": "cpp",
+        "mprealsupport": "cpp",
+        "numericaldiff": "cpp",
+        "openglsupport": "cpp",
+        "specialfunctions": "cpp",
+        "splines": "cpp",
+        "*.evaluator": "cpp",
+        "*.traits": "cpp",
+        "chrono": "cpp",
+        "functional": "cpp",
+        "algorithm": "cpp",
+        "format": "cpp"
+    },
+    "idf.port": "/dev/ttyACM0",
+    "idf.flashType": "UART"
 }
