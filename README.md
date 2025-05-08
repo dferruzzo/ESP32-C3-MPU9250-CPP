@@ -17,6 +17,7 @@
 - [x] Calibrate acc.
     - [x] Calcular matriz Y.
     - [x] Calcular matriz W.
+- [ ] Gravar dados de calibração na EEPROM?
 - [ ] Calibrate mag.
 - [ ] Kalman filter.
 - [ ] sensor fusion.
