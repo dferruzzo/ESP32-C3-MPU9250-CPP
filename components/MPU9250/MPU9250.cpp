@@ -5,12 +5,14 @@ MPU9250::MPU9250(I2CManager* i2cManager)
     init();
 }
 
-MPU9250::~MPU9250() {
+MPU9250::~MPU9250() 
+{
     // Destrutor
     // Libera recursos, se necessário
 }
 
-esp_err_t MPU9250::init() {
+esp_err_t MPU9250::init() 
+{
 
     // Inicializa o dispositivo MPU9250
     MPU9250_handle_ptr = i2cManager->isDeviceInConfig(deviceAddress);
@@ -53,10 +55,12 @@ esp_err_t MPU9250::init() {
     return ESP_OK;
 }
 
-esp_err_t MPU9250::MPU9250Reset(){
+esp_err_t MPU9250::MPU9250Reset()
+{
     // Reseta o giroscópio
 
-    if (MPU9250_handle_ptr == nullptr) {
+    if (MPU9250_handle_ptr == nullptr) 
+    {
         ESP_LOGE(TAG, "MPU9250_handle_ptr is null, cannot reset gyroscope");
         return ESP_FAIL;
     }
@@ -125,13 +129,15 @@ esp_err_t MPU9250::gyrConfig(uint8_t fullScaleSel, uint8_t enableFilter, uint8_t
 }
 
 
-void MPU9250::getGyrFullScale(){
+void MPU9250::getGyrFullScale()
+{
 
 	ESP_LOGI(TAG, "Gyroscope full scale: %d", gyrFullScale);
 
 }
 
-esp_err_t MPU9250::gyrRead(){
+esp_err_t MPU9250::gyrRead()
+{
 
      // Suppress spell-check warnings for specific words
     if (!gyrCalibrated && !gyrCalibrationInProgress) {
@@ -171,7 +177,8 @@ esp_err_t MPU9250::gyrRead(){
     return ESP_OK;
 }
 
-esp_err_t MPU9250::gyrCalibrate(){
+esp_err_t MPU9250::gyrCalibrate()
+{
 
     // Inicia o processo de calibração do giroscópio
     if (gyrCalibrationInProgress) {
@@ -225,14 +232,16 @@ esp_err_t MPU9250::gyrCalibrate(){
 
 }
 
-esp_err_t MPU9250::gyrGetRead(){
+esp_err_t MPU9250::gyrGetRead()
+{
     
     ESP_LOGI(TAG, "Gyroscope Data (°/sec): X: %.2f Y: %.2f Z: %.2f", gyroData.x, gyroData.y, gyroData.z);
     return ESP_OK;
 
 }
 
-esp_err_t MPU9250::accConfig(uint8_t fullScaleSel, uint8_t accelDlpfCfg){
+esp_err_t MPU9250::accConfig(uint8_t fullScaleSel, uint8_t accelDlpfCfg)
+{
 
     if (fullScaleSel > 3) {
         ESP_LOGE(TAG, "Invalid FS_SEL value: %d. Must be between 0 and 3.", fullScaleSel);
@@ -277,7 +286,8 @@ esp_err_t MPU9250::accConfig(uint8_t fullScaleSel, uint8_t accelDlpfCfg){
     return ESP_OK;
 }
 
-esp_err_t MPU9250::accRead() { 
+esp_err_t MPU9250::accRead() 
+{ 
     
     if (!accCalibrated && !accCalibrationInProgress) {
         ESP_LOGW(TAG, "Accelerometer calibration not completed. Please calibrate the accelerometer first.");
@@ -320,14 +330,17 @@ esp_err_t MPU9250::accRead() {
     return ESP_OK; 
 }
 
-esp_err_t MPU9250::accGetRead() { 
+esp_err_t MPU9250::accGetRead() 
+{ 
     
     ESP_LOGI(TAG, "Accelerometer Data (g): X: %.2f Y: %.2f Z: %.2f", accData.x, accData.y, accData.z);
     
-    return ESP_OK; }
+    return ESP_OK; 
+}
 
 
-esp_err_t MPU9250::accCalibrate() { 
+esp_err_t MPU9250::accCalibrate() 
+{ 
     
     accCalibrationInProgress = true;
     
@@ -525,7 +538,8 @@ esp_err_t MPU9250::accCalibrate() {
     return ESP_OK; 
 }
 
-esp_err_t MPU9250::temRead(){
+esp_err_t MPU9250::temRead()
+{
 
     // Lê os dados do sensor de temperatura
     uint8_t raw_data[2];
@@ -541,7 +555,8 @@ esp_err_t MPU9250::temRead(){
 
 }
 
-esp_err_t MPU9250::temGetRead() { 
+esp_err_t MPU9250::temGetRead() 
+{ 
     
     ESP_LOGI(TAG, "Temperature Data (°C): Temp: %.2f", temData);
     
@@ -599,16 +614,17 @@ i2cManager->writeRegToDeviceWithHandle(*MPU9250_mag_handle_ptr, MPU9250_INT_PIN_
 return ESP_OK;
 }
 		
-esp_err_t MPU9250::magGetRead(){
+esp_err_t MPU9250::magGetRead()
+{
 
     ESP_LOGI(TAG, "Magnetometer Data (uT): X: %.2f Y: %.2f Z: %.2f", magData.x, magData.y, magData.z);
 
     return ESP_OK;
 }
 
-void MPU9250::printDataToTerminal(){
-
-     // Print data in CSV format. The format is:
+void MPU9250::printDataToTerminal()
+{
+	// Print data in CSV format. The format is:
         // "GyrX,GyrY, GyrZ, AccX, AccY, AccZ, MagX, MagY, MagZ, Temp"
         printf("%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
                 gyroData.x, gyroData.y, gyroData.z, 
@@ -617,7 +633,8 @@ void MPU9250::printDataToTerminal(){
                 temData);
 }
 
-void MPU9250::timer(uint8_t seconds){
+void MPU9250::timer(uint8_t seconds)
+{
     // Timer de 10 segundos com exibição do tempo restante
     for (int i = seconds; i > 0; --i) {
         ESP_LOGI(TAG, "Aguardando... %d segundos restantes.", i);
