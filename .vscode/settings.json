@@ -27,5 +27,6 @@
         "new": "cpp"
     },
     "idf.port": "/dev/ttyACM0",
-    "idf.flashType": "UART"
+    "idf.flashType": "UART",
+    "idf.pythonInstallPath": "/home/diego/.pyenv/shims/python"
 }

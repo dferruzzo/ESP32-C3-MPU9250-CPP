@@ -16,3 +16,4 @@ dependencies:
   #   public: true
   espressif/esp-idf-cxx: ^1.0.2-beta
   espressif/eigen: ^3.4.0~2
+  plasmapper/pl_nvs: ^1.0.0

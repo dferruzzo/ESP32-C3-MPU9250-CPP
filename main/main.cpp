@@ -2,11 +2,14 @@
 
 #include "I2CManager.h"
 #include "MPU9250.h"
-#include "NVSWrapper.h"
+//#include "NVSWrapper.h"
 #include "sdkconfig.h"
 #include <cinttypes>
 #include <cstdio>
 #include <iostream>
+#include "pl_nvs.h"
+#include "nvs_flash.h"
+
 
 extern "C" {
 #include "esp_chip_info.h"
@@ -19,59 +22,60 @@ extern "C" {
 #include "esp_system.h"
 }
 
-void exampleUsage() {
-    try {
-        NVSWrapper nvs;
-
-        // Store primitive types
-        nvs.write("temperature", 23.5f);
-        nvs.write("counter", 42);
-
-        // Store strings
-        nvs.writeString("wifi_ssid", "MyNetwork");
-
-        // Store vectors
-        //std::vector<int> readings = {10, 20, 30, 40};
-        //nvs.writeVector("sensor_readings", readings);
-
-        // Retrieve data
-        float temp;
-        if (nvs.read("temperature", temp)) {
-            std::cout << "Temperature: " << temp << std::endl;
-        }
-
-        std::string ssid;
-        if (nvs.readString("wifi_ssid", ssid)) {
-            std::cout << "WiFi SSID: " << ssid << std::endl;
-        }
-
-        //std::vector<int> saved_readings;
-        //if (nvs.readVector("sensor_readings", saved_readings)) {
-        //    std::cout << "Readings: ";
-        //    for (auto val : saved_readings) {
-        //        std::cout << val << " ";
-        //    }
-        //    std::cout << std::endl;
-        //}
-    } catch (const std::exception& e) {
-        std::cerr << "NVS Error: " << e.what() << std::endl;
+void write_and_read_3f_vector() {
+    // Inicializa o NVS
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        nvs_flash_erase();
+        nvs_flash_init();
     }
+
+    // Open or create the NVS namespace "storage" in read/write mode
+    PL::NvsNamespace nvs("storage", PL::NvsAccessMode::readWrite);
+
+    // The vector to store
+    float myVec[3] = {1.23f, 4.56f, 7.89f};
+
+    // Write the vector as a blob
+    esp_err_t err = nvs.Write("my_3f_vec", myVec, sizeof(myVec));
+    if (err != ESP_OK) {
+        printf("Failed to write vector to NVS: %d\n", err);
+        return;
+    }
+
+    // Commit changes to ensure data is saved
+    err = nvs.Commit();
+    if (err != ESP_OK) {
+        printf("Failed to commit NVS: %d\n", err);
+        return;
+    }
+
+    // Read the vector back
+    float readVec[3] = {0};
+    size_t dataSize = sizeof(readVec);
+    err = nvs.Read("my_3f_vec", readVec, sizeof(readVec), &dataSize);
+    if (err != ESP_OK) {
+        printf("Failed to read vector from NVS: %d\n", err);
+        return;
+    }
+
+    printf("Read vector: %f, %f, %f\n", readVec[0], readVec[1], readVec[2]);
 }
 
 extern "C" void app_main(void) {
-  // Inicializa o barramento I2C
-  I2CManager i2cManager;
-  // i2cManager.scanI2CDevices();
-  i2cManager.addDevice(MPU9250_ADDRESS);
-  i2cManager.addDevice(MPU9250_MAGNETOMETER_ADDR);
+    // Inicializa o barramento I2C
+    I2CManager i2cManager;
+    // i2cManager.scanI2CDevices();
+    i2cManager.addDevice(MPU9250_ADDRESS);
+    i2cManager.addDevice(MPU9250_MAGNETOMETER_ADDR);
 
-  MPU9250 mpu9250(&i2cManager);
+    MPU9250 mpu9250(&i2cManager);
 
-  // Testando as configuracões do giro.
-  /*
-  mpu9250.gyrConfig(MPU9250_GYRO_FS_SEL_1000,
-                  MPU9250_FCHOICE_B_GYRO_FILTER_ENABLED,
-                  MPU9250_GYRO_DLPF_CFG_20HZ);
+    // Testando as configuracões do giro.
+    /*
+    mpu9250.gyrConfig(MPU9250_GYRO_FS_SEL_1000,
+                    MPU9250_FCHOICE_B_GYRO_FILTER_ENABLED,
+                    MPU9250_GYRO_DLPF_CFG_20HZ);
 */
   // mpu9250.gyrCalibrate();
 
@@ -80,23 +84,21 @@ extern "C" void app_main(void) {
   //		    MPU9250_ACCEL_NO_FIL_BW_1046Hz);
 
   // mpu9250.accCalibrate();
-  /*
-      while(1){
-          mpu9250.gyrRead();
-          //mpu9250.gyrGetRead();
-          mpu9250.accRead();
-          //mpu9250.accGetRead();
-          mpu9250.temRead();
-          //mpu9250.temGetRead();
-          mpu9250.magRead();
-          //mpu9250.magGetRead();
-          mpu9250.printDataToTerminal();
+    /*
+        while(1){
+            mpu9250.gyrRead();
+            //mpu9250.gyrGetRead();
+            mpu9250.accRead();
+            //mpu9250.accGetRead();
+            mpu9250.temRead();
+            //mpu9250.temGetRead();
+            mpu9250.magRead();
+            //mpu9250.magGetRead();
+            mpu9250.printDataToTerminal();
 
-          vTaskDelay(pdMS_TO_TICKS(250));
-      }
+            vTaskDelay(pdMS_TO_TICKS(250));
+        }
   */
-  // Testando o NVS
-  exampleUsage();
-
-  //  i2cManager.deInit();
+    write_and_read_3f_vector();
+    //  i2cManager.deInit();
 }
