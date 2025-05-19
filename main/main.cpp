@@ -9,6 +9,7 @@
 #include <iostream>
 #include "pl_nvs.h"
 #include "nvs_flash.h"
+#include "NVSUtils.h"
 
 
 extern "C" {
@@ -99,6 +100,30 @@ extern "C" void app_main(void) {
             vTaskDelay(pdMS_TO_TICKS(250));
         }
   */
-    write_and_read_3f_vector();
+   //write_and_read_3f_vector();
+
+   // Inicializa o NVS
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        nvs_flash_erase();
+        nvs_flash_init();
+    }
+    PL::NvsNamespace nvs("storage", PL::NvsAccessMode::readWrite);
+    /*
+    // Writing
+    Eigen::MatrixXf mat(2, 3);
+    mat << 1, 2, 3, 4, 5, 6;
+    // Store the matrix in NVS 
+    NVSUtils::WriteEigenMatrix(nvs, "my_matrix", mat);
+    nvs.Commit();
+    */
+    
+    // Reading
+    Eigen::MatrixXf loadedMat;
+    NVSUtils::ReadEigenMatrix(nvs, "my_matrix", loadedMat);
+
+    std::cout << "loadedMat = " << std::endl << loadedMat << std::endl;
+    // Now loadedMat contains the matrix
     //  i2cManager.deInit();
+
 }

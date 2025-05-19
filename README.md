@@ -17,8 +17,10 @@
 - [x] Calibrate acc.
     - [x] Calcular matriz Y.
     - [x] Calcular matriz W.
-- [ ] Gravar dados de calibração na EEPROM?
-    - [ ] Revisar a função bool handleError(esp_err_t err, bool ignoreNotFound = false); no header NVSWrapper.h, pode estar produzindo um erro.
+- [x] Gravar dados de calibração na EEPROM?
+    - [x] Revisar a função bool handleError(esp_err_t err, bool ignoreNotFound = false); no header NVSWrapper.h, pode estar produzindo um erro. CANCELADO!
+    - [x] Utilizando pl_nvs component.
+    - [ ] Implementar as funções que gravam os dados no NVS.
 - [ ] Calibrate mag.
 - [ ] Kalman filter.
 - [ ] sensor fusion.
