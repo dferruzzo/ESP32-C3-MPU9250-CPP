@@ -22,7 +22,7 @@ dependencies:
   idf:
     source:
       type: idf
-    version: 5.5.0
+    version: 5.4.1
   plasmapper/pl_common:
     component_hash: bc77bf671462e34ba957e32182ed8f77c8eca31edf125cfc57a19d7b74de1db0
     dependencies:
