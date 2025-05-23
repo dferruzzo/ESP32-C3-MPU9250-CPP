@@ -1,0 +1,36 @@
+{
+    /* A name for the dev container displayed in the UI */
+    "name": "ESP-IDF",
+    /* container name when creating container */
+    "image": "espressif/idf:v5.4.1",
+    /* mount the local folder to /workspaces folder of Docker image */
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind",
+    /* the path of workspace folder, which means that this folder will be opened after container is running
+    */
+    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+    /* mount the VS Code extensions to the target path, and then they don't need to be installed again when rebuilding the container
+    */
+    "mounts": [
+        "source=extensionCache,target=/root/.vscode-server/extensions,type=volume"
+    ],
+    /* Machine specific settings that should be copied into the container
+    */
+    "customizations": {
+        "vscode": {
+            "settings": {
+                "terminal.integrated.defaultProfile.linux": "bash",
+                "idf.espIdfPath": "/opt/esp/idf",
+                "idf.toolsPath": "/opt/esp",
+                "idf.gitPath": "/usr/bin/git"
+            },
+            "extensions": [
+                "espressif.esp-idf-extension",
+                "ms-vscode.cpptools-extension-pack",
+                "ms-vscode.cpptools-themes"
+            ]
+        }
+    },
+    /* start the container with privileged mode, otherwise the devices cannot be accessed on the Docker image.
+    */
+    "runArgs": ["--privileged"]
+}
