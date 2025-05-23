@@ -24,3 +24,19 @@
 - [ ] Calibrate mag.
 - [ ] Kalman filter.
 - [ ] sensor fusion.
+
+---
+
+## No Windows - Docker - WSL 
+
+[ESP-IDF Docker Container Documentation](https://docs.espressif.com/projects/vscode-esp-idf-extension/en/latest/additionalfeatures/docker-container.html)
+
+Utilize o `.devcontainer.json` para carregar o Docker container.
+
+No PowerShell:
+
+```bash
+ usbipd attach --wsl --busid 1-2 --auto-attach
+```
+
+para ter acesso ao usb no Windows dentro do container.
