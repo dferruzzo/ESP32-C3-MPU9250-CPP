@@ -63,6 +63,35 @@ void write_and_read_3f_vector() {
     printf("Read vector: %f, %f, %f\n", readVec[0], readVec[1], readVec[2]);
 }
 
+void write_and_read_eigen_matrix() {
+
+    // Check if NVS is already initialized by calling nvs_flash_init()
+    esp_err_t ret = nvs_flash_init();
+    // If already initialized, nvs_flash_init() will return ESP_ERR_NVS_BASE or ESP_OK
+    if (ret == ESP_ERR_NVS_BASE || ret == ESP_OK) {
+        // NVS is already initialized or just initialized now
+        ret = ESP_OK;
+    } else if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        nvs_flash_erase();
+        nvs_flash_init();
+    }
+    PL::NvsNamespace nvs("storage", PL::NvsAccessMode::readWrite);
+    /*
+    // Writing
+    Eigen::MatrixXf mat(2, 3);
+    mat << 1, 2, 3, 4, 5, 6;
+    // Store the matrix in NVS 
+    NVSUtils::WriteEigenMatrix(nvs, "my_matrix", mat);
+    nvs.Commit();
+    */
+    
+    // Reading
+    Eigen::MatrixXf loadedMat;
+    NVSUtils::ReadEigenMatrix(nvs, "my_matrix", loadedMat);
+
+    std::cout << "loadedMat = " << std::endl << loadedMat << std::endl;
+}
+
 extern "C" void app_main(void) {
     // Inicializa o barramento I2C
     I2CManager i2cManager;
@@ -73,11 +102,11 @@ extern "C" void app_main(void) {
     MPU9250 mpu9250(&i2cManager);
 
     // Testando as configuracões do giro.
-    /*
+    
     mpu9250.gyrConfig(MPU9250_GYRO_FS_SEL_1000,
                     MPU9250_FCHOICE_B_GYRO_FILTER_ENABLED,
                     MPU9250_GYRO_DLPF_CFG_20HZ);
-*/
+
   // mpu9250.gyrCalibrate();
 
   // Testando conf do acelerômetro.
@@ -101,28 +130,9 @@ extern "C" void app_main(void) {
         }
   */
    //write_and_read_3f_vector();
+   //write_and_read_eigen_matrix();
 
-   // Inicializa o NVS
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        nvs_flash_erase();
-        nvs_flash_init();
-    }
-    PL::NvsNamespace nvs("storage", PL::NvsAccessMode::readWrite);
-    /*
-    // Writing
-    Eigen::MatrixXf mat(2, 3);
-    mat << 1, 2, 3, 4, 5, 6;
-    // Store the matrix in NVS 
-    NVSUtils::WriteEigenMatrix(nvs, "my_matrix", mat);
-    nvs.Commit();
-    */
-    
-    // Reading
-    Eigen::MatrixXf loadedMat;
-    NVSUtils::ReadEigenMatrix(nvs, "my_matrix", loadedMat);
-
-    std::cout << "loadedMat = " << std::endl << loadedMat << std::endl;
+   
     // Now loadedMat contains the matrix
     //  i2cManager.deInit();
 

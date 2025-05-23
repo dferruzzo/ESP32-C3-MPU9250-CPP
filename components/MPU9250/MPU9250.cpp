@@ -128,7 +128,6 @@ esp_err_t MPU9250::gyrConfig(uint8_t fullScaleSel, uint8_t enableFilter, uint8_t
 
 }
 
-
 void MPU9250::getGyrFullScale()
 {
 
@@ -179,7 +178,14 @@ esp_err_t MPU9250::gyrRead()
 
 esp_err_t MPU9250::gyrCalibrate()
 {
-
+    // Inicia o NVS
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        nvs_flash_erase();
+        nvs_flash_init();
+    }
+    PL::NvsNamespace nvs("storage", PL::NvsAccessMode::readWrite);
+    
     // Inicia o processo de calibração do giroscópio
     if (gyrCalibrationInProgress) {
         ESP_LOGW(TAG, "Gyroscope calibration already in progress.");
