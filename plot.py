@@ -1,4 +1,6 @@
 import serial
+import matplotlib
+matplotlib.use('TkAgg')  # Ou 'Qt5Agg', se preferir
 import matplotlib.pyplot as plt
 from collections import deque
 

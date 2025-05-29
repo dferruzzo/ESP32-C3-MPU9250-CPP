@@ -26,11 +26,14 @@
             "extensions": [
                 "espressif.esp-idf-extension",
                 "ms-vscode.cpptools-extension-pack",
-                "ms-vscode.cpptools-themes"
+                "ms-vscode.cpptools-themes",
+                "ms-python.python",
+                "Gruntfuggly.todo-tree",
+                "ms-toolsai.jupyter"
             ]
         }
     },
-    /* start the container with privileged mode, otherwise the devices cannot be accessed on the Docker image.
+        /* start the container with privileged mode, otherwise the devices cannot be accessed on the Docker image.
     */
     "runArgs": ["--privileged"]
 }

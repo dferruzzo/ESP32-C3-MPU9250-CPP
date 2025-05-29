@@ -12,6 +12,8 @@
 #include "MPU9250_Register_Map.h"
 #include <eigen3/Eigen/Eigen>
 #include <iostream>
+#include "nvs_flash.h"
+#include "NVSUtils.h"
 
 #define TAG "MPU9250"
 
@@ -30,7 +32,6 @@ struct Vec3f {
     Vec3f(float x, float y, float z) : x(x), y(y), z(z) {}
 	};
 
-
 class MPU9250 {
 
 	public:
@@ -40,20 +41,26 @@ class MPU9250 {
 		esp_err_t init();
 		esp_err_t MPU9250Reset();
 
+		// Girsocópio
+		bool forceGyroCalibration = false; // Força a calibração do giroscópio
 		esp_err_t gyrConfig(uint8_t fullScaleSel, uint8_t enableFilter, uint8_t gyroDlpfCfg);
-		esp_err_t gyrCalibrate();
+		esp_err_t gyrCalibrate(PL::NvsNamespace& nvs);
 		esp_err_t gyrRead();
 		esp_err_t gyrGetRead();
 		void getGyrFullScale();
 
+		// Acelerômetro
+		bool forceAccCalibration = false; // Força a calibração do acelerômetro
 		esp_err_t accConfig(uint8_t fullScaleSel, uint8_t accelDlpfCfg);
 		esp_err_t accRead();
-		esp_err_t accCalibrate();
+		esp_err_t accCalibrate(PL::NvsNamespace& nvs);
 		esp_err_t accGetRead();
 
+		// Temperatura
         esp_err_t temRead();
 		esp_err_t temGetRead();
 
+		// Magnetômetro
 		//esp_err_t magConfig();
 		esp_err_t magRead();
 		esp_err_t magGetRead();
@@ -70,17 +77,18 @@ class MPU9250 {
 		uint8_t deviceAddressMag = MPU9250_MAGNETOMETER_ADDR;
 		i2c_master_dev_handle_t* MPU9250_handle_ptr = nullptr;
 		i2c_master_dev_handle_t* MPU9250_mag_handle_ptr = nullptr;
-
-		// Giroscópio
+		
+		// Gyroscope data and calibration
 		Vec3f gyroData = Vec3f(0.0f, 0.0f, 0.0f);
 		Vec3f gyroBias = Vec3f(0.0f, 0.0f, 0.0f);
+
 		float gyrScale = 0.0f;
 		uint8_t gyrFullScale = 0;
 		bool gyrCalibrated = false;
 		bool gyrCalibrationInProgress = false;
 		//uint16_t gyroNumSamples = 500; // Inicializado com 0
 
-                // Acelerômetro
+        // Acelerômetro
 		Vec3f accData = Vec3f(0.0f, 0.0f, 0.0f);
 		float accScale = 0.0f;
 		uint8_t accFullScale = 0;

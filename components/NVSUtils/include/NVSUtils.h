@@ -7,6 +7,43 @@
 
 namespace NVSUtils {
 
+// a função to read a float value from NVS
+inline esp_err_t ReadFloat(PL::NvsNamespace& nvs, const std::string& key, float& value) {
+    size_t dataSize = sizeof(value);
+    return nvs.Read(key, &value, dataSize, &dataSize);
+}
+
+// a function to write a float value to NVS
+inline esp_err_t WriteFloat(PL::NvsNamespace& nvs, const std::string& key, float value) {
+    return nvs.Write(key, &value, sizeof(value));
+}
+
+// a function to write a 3-element float vector to NVS
+inline esp_err_t Write3fVector(PL::NvsNamespace& nvs, const std::string& key, const float vec[3]) {
+    return nvs.Write(key, vec, sizeof(float) * 3);
+}
+
+// a function to read a 3-element float vector from NVS
+inline esp_err_t Read3fVector(PL::NvsNamespace& nvs, const std::string& key, float vec[3]) {
+    size_t dataSize = sizeof(float) * 3;
+    return nvs.Read(key, vec, dataSize, &dataSize);
+}
+
+inline esp_err_t WriteBool(PL::NvsNamespace& nvs, const std::string& key, bool value) {
+    uint8_t val = value ? 1 : 0;
+    return nvs.Write(key, &val, sizeof(val));
+}
+
+inline esp_err_t ReadBool(PL::NvsNamespace& nvs, const std::string& key, bool& value) {
+    uint8_t val = 0;
+    size_t size = sizeof(val);
+    esp_err_t err = nvs.Read(key, &val, sizeof(val), &size);
+    if (err == ESP_OK) {
+        value = (val != 0);
+    }
+    return err;
+}
+
 inline esp_err_t WriteEigenMatrix(PL::NvsNamespace& nvs, const std::string& key, const Eigen::MatrixXf& mat) {
     // Store rows and cols as metadata
     std::string metaKey = key + "_meta";

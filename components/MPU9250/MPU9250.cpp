@@ -176,16 +176,27 @@ esp_err_t MPU9250::gyrRead()
     return ESP_OK;
 }
 
-esp_err_t MPU9250::gyrCalibrate()
+esp_err_t MPU9250::gyrCalibrate(PL::NvsNamespace& nvs)
 {
-    // Inicia o NVS
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        nvs_flash_erase();
-        nvs_flash_init();
+    // Check if gyroscope bias is already stored in NVS to skip calibration
+    bool gyroBiasStored = false;
+    NVSUtils::ReadBool(nvs, "gyroBiasStored", gyroBiasStored); // <-- Use NVSUtils here
+    if (gyroBiasStored && !forceGyroCalibration) {
+        ESP_LOGI(TAG, "Gyroscope bias already stored in NVS. Skipping calibration.");
+        // Read the bias values from NVS
+        NVSUtils::ReadFloat(nvs, "gyroBias_x", gyroBias.x);
+        NVSUtils::ReadFloat(nvs, "gyroBias_y", gyroBias.y);
+        NVSUtils::ReadFloat(nvs, "gyroBias_z", gyroBias.z);
+        gyrCalibrated = true; // Set the calibration flag to true
+        gyrCalibrationInProgress = false;
+        ESP_LOGI(TAG, "Gyroscope bias: X: %.2f Y: %.2f Z: %.2f", gyroBias.x, gyroBias.y, gyroBias.z);
+        return ESP_OK; // Skip calibration if bias is already stored
     }
-    PL::NvsNamespace nvs("storage", PL::NvsAccessMode::readWrite);
-    
+    // If the forceGyroCalibration flag is set, skip reading from NVS
+    if (forceGyroCalibration) {
+        ESP_LOGI(TAG, "Forcing gyroscope calibration.");
+        gyroBiasStored = false; // Force calibration
+    }
     // Inicia o processo de calibração do giroscópio
     if (gyrCalibrationInProgress) {
         ESP_LOGW(TAG, "Gyroscope calibration already in progress.");
@@ -225,6 +236,15 @@ esp_err_t MPU9250::gyrCalibrate()
     gyroBias.y /= 100.0f;
     gyroBias.z /= 100.0f;
 
+    // Store the bias values in NVS
+    NVSUtils::WriteFloat(nvs, "gyroBias_x", gyroBias.x);
+    NVSUtils::WriteFloat(nvs, "gyroBias_y", gyroBias.y);
+    NVSUtils::WriteFloat(nvs, "gyroBias_z", gyroBias.z);
+    NVSUtils::WriteBool(nvs, "gyroBiasStored", true); // Set the flag to indicate bias is stored
+    //commit the changes to NVS
+    nvs.Commit();
+    
+    ESP_LOGI(TAG, "Gyroscope bias stored in NVS.");
 
     ESP_LOGI(TAG, "Gyroscope bias: X: %.2f Y: %.2f Z: %.2f", gyroBias.x, gyroBias.y, gyroBias.z);
     timer(2);
@@ -233,6 +253,11 @@ esp_err_t MPU9250::gyrCalibrate()
     // Finaliza o processo de calibração
     gyrCalibrated = true;
     gyrCalibrationInProgress = false;
+    ESP_LOGI(TAG, "Gyroscope calibration completed successfully.");
+    ESP_LOGI(TAG, "*******************************************************");
+    ESP_LOGI(TAG, "Gyroscope calibration data stored in NVS.");
+    ESP_LOGI(TAG, "*******************************************************");
+    
 
     return ESP_OK;  
 
@@ -345,9 +370,29 @@ esp_err_t MPU9250::accGetRead()
 }
 
 
-esp_err_t MPU9250::accCalibrate() 
+esp_err_t MPU9250::accCalibrate(PL::NvsNamespace& nvs) 
 { 
-    
+    bool accCalibrationStored = false;
+    esp_err_t accCalStrError = NVSUtils::ReadBool(nvs, "accCalStr", accCalibrationStored); // Use NVSUtils to read the flag
+    if ((accCalStrError==ESP_OK) &&  accCalibrationStored && !forceAccCalibration) {
+        ESP_LOGI(TAG, "Accelerometer calibration already stored in NVS. Skipping calibration.");
+        // Read the calibration matrix from NVS
+        NVSUtils::ReadEigenMatrix(nvs, "accCalMat", accCalibrationMatrix);
+        // Set the calibration flag to true
+        accCalibrated = true; 
+        accCalibrationInProgress = false;
+        ESP_LOGI(TAG, "Accelerometer calibration matrix loaded from NVS.");
+        return ESP_OK; // Skip calibration if matrix is already stored
+    }else if (accCalStrError != ESP_OK) {
+        ESP_LOGW(TAG, "Failed to read accelerometer calibration status from NVS: %s", esp_err_to_name(accCalStrError));
+        //return accCalStrError; // Return error if reading from NVS failed
+    }
+
+    if(forceAccCalibration) {
+        ESP_LOGI(TAG, "Forcing accelerometer calibration.");
+        accCalibrationStored = false; // Force calibration
+    }
+
     accCalibrationInProgress = true;
     
     // Create matrix Y 
@@ -536,6 +581,22 @@ esp_err_t MPU9250::accCalibrate()
     Eigen::MatrixXf WtW_inv = WtW.inverse();
     Eigen::MatrixXf WtY = Wt * Y;
     accCalibrationMatrix = WtW_inv * WtY;
+
+    //Store the calibration matrix in NVS
+    esp_err_t writeErrorMatrix = NVSUtils::WriteEigenMatrix(nvs, "accCalMat", accCalibrationMatrix);
+    if (writeErrorMatrix != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to write accelerometer calibration status to NVS: %s", esp_err_to_name(writeErrorMatrix));
+        return writeErrorMatrix; // Return error if writing to NVS failed
+    }
+    esp_err_t writeErrorBool = NVSUtils::WriteBool(nvs, "accCalStr", true); // Set the flag to indicate calibration is stored
+    if (writeErrorBool != ESP_OK){
+        ESP_LOGE(TAG, "Failed to write accelerometer calibration matrix to NVS: %s", esp_err_to_name(writeErrorBool));
+        return writeErrorBool; // Return error if writing to NVS failed
+    }
+    
+    // Commit the changes to NVS
+    nvs.Commit();
+    ESP_LOGI(TAG, "Accelerometer calibration matrix stored in NVS.");
     
     //std::cout << "A = " << std::endl << *A << std::endl;
 

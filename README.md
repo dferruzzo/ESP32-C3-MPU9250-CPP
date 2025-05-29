@@ -20,8 +20,11 @@
 - [x] Gravar dados de calibração na EEPROM?
     - [x] Revisar a função bool handleError(esp_err_t err, bool ignoreNotFound = false); no header NVSWrapper.h, pode estar produzindo um erro. CANCELADO!
     - [x] Utilizando pl_nvs component.
-    - [ ] Implementar as funções que gravam os dados no NVS.
+    - [x] Implementar as funções que gravam os dados no NVS.
+    - [x] Gravar bias do gyro. Na calibração verificar se há armazanado bias.
+    - [x] Gravar dados de calibração do aceleómetro. Na calibração verificar se há dados armazenados.
 - [ ] Calibrate mag.
+    - [ ] Gravar dados no NVS. Na calibração verificar se há dados guardados.
 - [ ] Kalman filter.
 - [ ] sensor fusion.
 

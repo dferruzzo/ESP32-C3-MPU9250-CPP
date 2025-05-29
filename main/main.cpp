@@ -93,6 +93,23 @@ void write_and_read_eigen_matrix() {
 }
 
 extern "C" void app_main(void) {
+
+    // Inicia o Non-Volatile Storage (NVS)
+    
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        nvs_flash_erase();
+        nvs_flash_init();
+    }
+    // cria a namespace "storage" no NVS
+    PL::NvsNamespace nvs("storage", PL::NvsAccessMode::readWrite);
+
+    // le a matriz Eigen do NVS
+    Eigen::MatrixXf loadedMat;
+    NVSUtils::ReadEigenMatrix(nvs, "my_matrix", loadedMat);
+    // Exibe a matriz carregada
+    std::cout << "loadedMat = " << std::endl << loadedMat << std::endl;
+
     // Inicializa o barramento I2C
     I2CManager i2cManager;
     // i2cManager.scanI2CDevices();
@@ -107,14 +124,15 @@ extern "C" void app_main(void) {
                     MPU9250_FCHOICE_B_GYRO_FILTER_ENABLED,
                     MPU9250_GYRO_DLPF_CFG_20HZ);
 
-  // mpu9250.gyrCalibrate();
+    mpu9250.forceGyroCalibration = false; // Força a calibração do giroscópio
+    mpu9250.gyrCalibrate(nvs);
 
-  // Testando conf do acelerômetro.
-  // mpu9250.accConfig(MPU9250_ACCEL_FS_SEL_4,
-  //		    MPU9250_ACCEL_NO_FIL_BW_1046Hz);
+    // Testando conf do acelerômetro.
+    mpu9250.accConfig(MPU9250_ACCEL_FS_SEL_4,
+  		    MPU9250_ACCEL_NO_FIL_BW_1046Hz);
 
-  // mpu9250.accCalibrate();
-    /*
+    mpu9250.accCalibrate(nvs);
+    
         while(1){
             mpu9250.gyrRead();
             //mpu9250.gyrGetRead();
@@ -128,7 +146,7 @@ extern "C" void app_main(void) {
 
             vTaskDelay(pdMS_TO_TICKS(250));
         }
-  */
+  
    //write_and_read_3f_vector();
    //write_and_read_eigen_matrix();
 
