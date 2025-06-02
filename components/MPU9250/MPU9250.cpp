@@ -689,6 +689,10 @@ esp_err_t MPU9250::magGetRead()
     return ESP_OK;
 }
 
+esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs){
+    return ESP_OK; // Placeholder for future implementation
+}
+
 void MPU9250::printDataToTerminal()
 {
 	// Print data in CSV format. The format is:

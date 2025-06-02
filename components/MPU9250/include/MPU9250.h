@@ -62,8 +62,10 @@ class MPU9250 {
 
 		// Magnetômetro
 		//esp_err_t magConfig();
+		bool forceMagCalibration = false; // Força a calibração do acelerômetro
 		esp_err_t magRead();
 		esp_err_t magGetRead();
+		esp_err_t magCalibrate(PL::NvsNamespace& nvs);
 
 		void timer(uint8_t seconds);
 

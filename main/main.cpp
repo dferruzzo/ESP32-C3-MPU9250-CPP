@@ -101,14 +101,17 @@ extern "C" void app_main(void) {
         nvs_flash_erase();
         nvs_flash_init();
     }
+    
     // cria a namespace "storage" no NVS
     PL::NvsNamespace nvs("storage", PL::NvsAccessMode::readWrite);
-
+    /*
+    /
     // le a matriz Eigen do NVS
     Eigen::MatrixXf loadedMat;
     NVSUtils::ReadEigenMatrix(nvs, "my_matrix", loadedMat);
     // Exibe a matriz carregada
     std::cout << "loadedMat = " << std::endl << loadedMat << std::endl;
+    */
 
     // Inicializa o barramento I2C
     I2CManager i2cManager;
@@ -131,6 +134,7 @@ extern "C" void app_main(void) {
     mpu9250.accConfig(MPU9250_ACCEL_FS_SEL_4,
   		    MPU9250_ACCEL_NO_FIL_BW_1046Hz);
 
+    mpu9250.forceAccCalibration = false; // Força a calibração do acelerômetro        
     mpu9250.accCalibrate(nvs);
     
         while(1){
