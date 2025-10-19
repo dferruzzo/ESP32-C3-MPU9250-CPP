@@ -41,7 +41,7 @@ class MPU9250 {
 		esp_err_t init();
 		esp_err_t MPU9250Reset();
 
-		// Girsocópio
+		/* Girsocópio */
 		bool forceGyroCalibration = false; // Força a calibração do giroscópio
 		esp_err_t gyrConfig(uint8_t fullScaleSel, uint8_t enableFilter, uint8_t gyroDlpfCfg);
 		esp_err_t gyrCalibrate(PL::NvsNamespace& nvs);
@@ -49,23 +49,23 @@ class MPU9250 {
 		esp_err_t gyrGetRead();
 		void getGyrFullScale();
 
-		// Acelerômetro
+		/* Acelerômetro */
 		bool forceAccCalibration = false; // Força a calibração do acelerômetro
 		esp_err_t accConfig(uint8_t fullScaleSel, uint8_t accelDlpfCfg);
 		esp_err_t accRead();
 		esp_err_t accCalibrate(PL::NvsNamespace& nvs);
 		esp_err_t accGetRead();
 
-		// Temperatura
-        esp_err_t temRead();
-		esp_err_t temGetRead();
-
-		// Magnetômetro
+		/* Magnetômetro */
 		//esp_err_t magConfig();
 		bool forceMagCalibration = false; // Força a calibração do acelerômetro
 		esp_err_t magRead();
 		esp_err_t magGetRead();
 		esp_err_t magCalibrate(PL::NvsNamespace& nvs);
+
+		/* Temperatura */
+        	esp_err_t temRead();
+		esp_err_t temGetRead();
 
 		void timer(uint8_t seconds);
 
@@ -73,40 +73,44 @@ class MPU9250 {
 
 	private:
 
-		//	Configuração do I2C
+		/* Configuração do I2C */
 		I2CManager* i2cManager;
 		uint8_t deviceAddress = MPU9250_ADDRESS;
 		uint8_t deviceAddressMag = MPU9250_MAGNETOMETER_ADDR;
 		i2c_master_dev_handle_t* MPU9250_handle_ptr = nullptr;
 		i2c_master_dev_handle_t* MPU9250_mag_handle_ptr = nullptr;
 		
-		// Gyroscope data and calibration
+		/* Gyroscope data and calibration */
 		Vec3f gyroData = Vec3f(0.0f, 0.0f, 0.0f);
 		Vec3f gyroBias = Vec3f(0.0f, 0.0f, 0.0f);
 
-		float gyrScale = 0.0f;
+		float	gyrScale = 0.0f;
 		uint8_t gyrFullScale = 0;
-		bool gyrCalibrated = false;
-		bool gyrCalibrationInProgress = false;
+		bool	gyrCalibrated = false;
+		bool	gyrCalibrationInProgress = false;
 		//uint16_t gyroNumSamples = 500; // Inicializado com 0
 
-        // Acelerômetro
-		Vec3f accData = Vec3f(0.0f, 0.0f, 0.0f);
-		float accScale = 0.0f;
-		uint8_t accFullScale = 0;
+        	/* Acelerômetro */
+		Vec3f	accData = Vec3f(0.0f, 0.0f, 0.0f);
+		float	accScale = 0.0f;
+		uint8_t	accFullScale = 0;
 		uint8_t accDlpfSel = 0;
-		int8_t accNumSamplesCal = 10;	// Número de amostras para calibração do acc.
-		int8_t accFactorCal = 10; // Fator de escala para os dados do acelerômetro durante a calibragem
-		bool accCalibrated = false;
-		bool accCalibrationInProgress = false;
+		int8_t	accNumSamplesCal = 10;	// Número de amostras para calibração do acc.
+		int8_t	accFactorCal = 10; // Fator de escala para os dados do acelerômetro durante a calibragem
+		bool	accCalibrated = false;
+		bool	accCalibrationInProgress = false;
 		Eigen::MatrixXf accCalibrationMatrix; // Matriz de calibração do acelerômetro
-
-        // Temperatura
-		float temData = 0.0f;
 		
-		// Magnetômetro
-		float magScale = 0.1465f;
-        Vec3f magData = Vec3f(0.0f, 0.0f, 0.0f);
+		/* Magnetômetro */
+		float	magScale = 0.1465f;
+        	Vec3f	magData = Vec3f(0.0f, 0.0f, 0.0f);
+		int8_t	magNumSamplesCal = 100;	// Número de amostras para calibração do acc.
+		bool	magCalibrated = false;
+		bool 	agCalibrationInProgress = false;
+                
+		/* Temperatura */
+		float	temData = 0.0f;
+		
     };
 
 };

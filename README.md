@@ -47,7 +47,7 @@ SCL  ────────┴────────────────
 - [x] TODO: Calibrate acc.
     - [x] TODO: Calcular matriz Y.
     - [x] TODO: Calcular matriz W.
-.- [x] TODO: Gravar dados de calibração na EEPROM?
+- [x] TODO: Gravar dados de calibração na EEPROM?
     - [x] TODO: Revisar a função bool handleError(esp_err_t err, bool ignoreNotFound = false); no header NVSWrapper.h, pode estar produzindo um erro. CANCELADO!
     - [x] TODO: Utilizando pl_nvs component.
     - [x] TODO: Implementar as funções que gravam os dados no NVS.

@@ -369,12 +369,11 @@ esp_err_t MPU9250::accGetRead()
     return ESP_OK; 
 }
 
-
 esp_err_t MPU9250::accCalibrate(PL::NvsNamespace& nvs) 
 { 
     bool accCalibrationStored = false;
     esp_err_t accCalStrError = NVSUtils::ReadBool(nvs, "accCalStr", accCalibrationStored); // Use NVSUtils to read the flag
-    if ((accCalStrError==ESP_OK) &&  accCalibrationStored && !forceAccCalibration) {
+    if ((accCalStrError==ESP_OK) && accCalibrationStored && !forceAccCalibration) {
         ESP_LOGI(TAG, "Accelerometer calibration already stored in NVS. Skipping calibration.");
         // Read the calibration matrix from NVS
         NVSUtils::ReadEigenMatrix(nvs, "accCalMat", accCalibrationMatrix);
@@ -632,55 +631,53 @@ esp_err_t MPU9250::temGetRead()
 
 //esp_err_t MPU9250::magConfig(){return ESP_OK;}
 
-esp_err_t MPU9250::magRead(){
-uint8_t pass_through = PASS_THROUGH_MODE;
-uint8_t mag_single_measure = 0x01;
+esp_err_t MPU9250::magRead()
+{
+	uint8_t pass_through = PASS_THROUGH_MODE;
+	uint8_t mag_single_measure = 0x01;
 
-esp_err_t ret1, ret2;
-ret1 = i2cManager->writeRegToDeviceWithHandle(
-      *MPU9250_handle_ptr, MPU9250_INT_PIN_CFG, &pass_through,
-      1);  // configura o modo pass-through
-ret2 = i2cManager->writeRegToDeviceWithHandle(
-      *MPU9250_mag_handle_ptr, MPU9250_MAG_CNTL, &mag_single_measure,1);  // configura o endereço do AK8963
+	esp_err_t ret1, ret2;
+	ret1 = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_INT_PIN_CFG, &pass_through, 1);  // configura o modo pass-through
+	ret2 = i2cManager->writeRegToDeviceWithHandle(*MPU9250_mag_handle_ptr, MPU9250_MAG_CNTL, &mag_single_measure,1);  // configura o endereço do AK8963
 
-if (ret1 != ESP_OK || ret2 != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to configure magnetometer");
-    return ESP_FAIL;
-}
+	if (ret1 != ESP_OK || ret2 != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to configure magnetometer");
+    		return ESP_FAIL;
+	}
 
-uint8_t data_ready = 0x00;
-const int max_attempts = 100; // e.g., 100 attempts * 10ms = 1 second timeout
-int attempts = 0;
-while ((data_ready & 0x01) == 0 && attempts < max_attempts) {
-    if (i2cManager->readRegFromDeviceWithHandle(*MPU9250_mag_handle_ptr, MPU9250_MAG_DATA_RDY, &data_ready, 1) != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to read magnetometer data ready status");
-        return ESP_FAIL;
-    }
-    vTaskDelay(pdMS_TO_TICKS(10));
-    attempts++;
-}
-if ((data_ready & 0x01) == 0) {
-    ESP_LOGE(TAG, "Timeout waiting for magnetometer data ready");
-    return ESP_FAIL;
-}
+	uint8_t data_ready = 0x00;
+	const int max_attempts = 100; // e.g., 100 attempts * 10ms = 1 second timeout
+	int attempts = 0;
+	while ((data_ready & 0x01) == 0 && attempts < max_attempts) {
+		if (i2cManager->readRegFromDeviceWithHandle(*MPU9250_mag_handle_ptr, MPU9250_MAG_DATA_RDY, &data_ready, 1) != ESP_OK) {
+			ESP_LOGE(TAG, "Failed to read magnetometer data ready status");
+			return ESP_FAIL;
+		}
+		vTaskDelay(pdMS_TO_TICKS(10));
+    		attempts++;
+	}
+	if ((data_ready & 0x01) == 0) {
+    		ESP_LOGE(TAG, "Timeout waiting for magnetometer data ready");
+    		return ESP_FAIL;
+	}
 
-// Read magnetometer data
-uint8_t raw_data[6]; //6 for magnetometer data 
-if (i2cManager->readRegFromDeviceWithHandle(*MPU9250_mag_handle_ptr, MPU9250_MAG_HXL, raw_data, 6) == ESP_OK) {
-    magData.x = (float)(((int16_t)((raw_data[1] << 8) | raw_data[0])) * magScale);
-    magData.y = (float)(((int16_t)((raw_data[3] << 8) | raw_data[2])) * magScale);
-    magData.z = (float)(((int16_t)((raw_data[5] << 8) | raw_data[4])) * magScale);
-} else {
-    ESP_LOGE(TAG, "Failed to read magnetometer data");
-    return ESP_FAIL;
+	// Read magnetometer data
+	uint8_t raw_data[6]; //6 for magnetometer data 
+	if (i2cManager->readRegFromDeviceWithHandle(*MPU9250_mag_handle_ptr, MPU9250_MAG_HXL, raw_data, 6) == ESP_OK) {
+    		magData.x = (float)(((int16_t)((raw_data[1] << 8) | raw_data[0])) * magScale);
+    		magData.y = (float)(((int16_t)((raw_data[3] << 8) | raw_data[2])) * magScale);
+    		magData.z = (float)(((int16_t)((raw_data[5] << 8) | raw_data[4])) * magScale);
+	} 
+	else {
+		ESP_LOGE(TAG, "Failed to read magnetometer data");
+    		return ESP_FAIL;
+	}
+	// Disable pass-through mode
+	pass_through = 0x00;
+	i2cManager->writeRegToDeviceWithHandle(*MPU9250_mag_handle_ptr, MPU9250_INT_PIN_CFG, &pass_through, 1);    // Turn-off PASS_THROUGH mode - Para ativar o Magnetómetro
+	return ESP_OK;
 }
-// Disable pass-through mode
-
-pass_through = 0x00;
-i2cManager->writeRegToDeviceWithHandle(*MPU9250_mag_handle_ptr, MPU9250_INT_PIN_CFG, &pass_through, 1);    // Turn-off PASS_THROUGH mode - Para ativar o Magnetómetro
-return ESP_OK;
-}
-		
+	
 esp_err_t MPU9250::magGetRead()
 {
 
@@ -689,7 +686,33 @@ esp_err_t MPU9250::magGetRead()
     return ESP_OK;
 }
 
-esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs){
+esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
+{
+	/*
+	 - [ ] TODO: Coletar M medidas do magnetômetro em diferentes orientações
+	 - [ ] TODO: Aplicar o algoritmo de calibragem (elimir soft iron e hard iron effects)
+	 * */
+	bool magCalibrationStored = false;
+	esp_err_t magCalStrError = NVSUtils::ReadBool(nvs, "magCalStr", magCalibrationStored); // Use NVSUtils to read the flag
+	if ((magCalStrError==ESP_OK) && magCalibrationStored && !forceMagCalibration) {
+		ESP_LOGI(TAG, "Magnetometer calibration already stored in NVS. Skipping calibration.");
+		// Read the calibration data from NVS
+		
+		/* - [ ] TODO: Implement reading calibration data here */
+		
+		// Set the calibration flag to true
+		magCalibrated = true; 
+		magCalibrationInProgress = false;
+		ESP_LOGI(TAG, "Magnetometer calibration data loaded from NVS.");
+		return ESP_OK; // Skip calibration if data is already stored
+	} else if (magCalStrError != ESP_OK) {
+		ESP_LOGW(TAG, "Failed to read magnetometer calibration status from NVS: %s", esp_err_to_name(magCalStrError));
+		forceMagCalibration = true;
+		//return magCalStrError; // Return error if reading from NVS failed
+	}
+       	if(forceMagCalibration) {	
+
+	}
     return ESP_OK; // Placeholder for future implementation
 }
 
