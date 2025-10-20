@@ -689,6 +689,7 @@ esp_err_t MPU9250::magGetRead()
 esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 {
 	/*
+	## Ten Parameter Magnetic Calibration Model
 	 - [ ] TODO: Coletar M medidas do magnetômetro em diferentes orientações
 	 - [ ] TODO: Aplicar o algoritmo de calibragem (elimir soft iron e hard iron effects)
 	 * */
@@ -698,7 +699,7 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 		ESP_LOGI(TAG, "Magnetometer calibration already stored in NVS. Skipping calibration.");
 		// Read the calibration data from NVS
 		
-		/* - [ ] TODO: Implement reading calibration data here */
+		/* - [ ] TODO: Implement reading calibration data from NVS here */
 		
 		// Set the calibration flag to true
 		magCalibrated = true; 
@@ -710,10 +711,152 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 		forceMagCalibration = true;
 		//return magCalStrError; // Return error if reading from NVS failed
 	}
-       	if(forceMagCalibration) {	
-
+       	if(forceMagCalibration) {
+		ESP_LOGI(TAG, "Forcing magnetometer calibration.");
+		magCalibrationStored = false; // Force calibration	
 	}
-    return ESP_OK; // Placeholder for future implementation
+
+	magCalibrationInProgress = true;
+	
+	/* - [X] TODO: Criar matrizes para utilizar durante a calibração */
+	
+	ESP_LOGI(TAG, "*******************************************************");	
+	ESP_LOGI(TAG, "Iniciando a calibração do magnetômetro...");
+	ESP_LOGI(TAG, "*******************************************************");
+	ESP_LOGI(TAG, "Gire o sensor em todas as direções para coletar os dados necessários.");
+	
+	// Collecting "magNumSamplesCal" Samples
+	Eigen::VectorXf magSample(10);
+	//magSample.setZero(); // Optional: initialize all elements to zero	
+	//Eigen::MatrixXf X(magNumSamplesCal,10);
+	//X.setZero(); // Optional: initialize all elements to zero
+	/* Construi a matrix Xt*X */
+	Eigen::MatrixXf XtX(10,10);
+	XtX.setZero(); // Optional: initialize all elements to zero	
+
+	int count = 0;
+	while (count < magNumSamplesCal){
+		
+		magRead();  // Lê os dados do magnetômetro
+		// Preencher o vetor de amostra
+		magSample(0) = magData.x * magData.x;
+		magSample(1) = 2*magData.x * magData.y;
+		magSample(2) = 2*magData.x * magData.z;
+		magSample(3) = magData.y*magData.y;
+		magSample(4) = 2*magData.y * magData.z;
+		magSample(5) = magData.z*magData.z;
+		magSample(6) = magData.x;
+		magSample(7) = magData.y;
+		magSample(8) = magData.z;
+		magSample(9) = 1.0f;
+
+		// Construir a matriz X
+		// Cada linha da matriz X corresponde a uma amostra
+		for (int r = 0; r < 10; r++) {
+			for (int s = 0; s < 10; s++) {
+				XtX(r,s) = XtX(r,s) + magSample(r)*magSample(s);
+			}
+		}
+		
+		timer(1.0, false);
+
+		ESP_LOGI(TAG, "Amostras coletadas: %d de %d", count+1, magNumSamplesCal);
+		
+		count++;
+	}
+	
+	/*	
+	// Mostra a matriz X using ESP_LOGI
+	ESP_LOGI(TAG, "Matriz XtX:");
+	for (int i = 0; i < XtX.rows(); i++) {
+		std::string row;
+	        for (int j = 0; j < XtX.cols(); j++) {
+			char buf[16];
+		        snprintf(buf, sizeof(buf), "%.3f ", XtX(i,j));
+                	row += buf;
+		}
+        ESP_LOGI(TAG, "%s", row.c_str());
+	}
+	*/
+	
+	/* - [X] TODO: Calcular os autovalores de XtX */
+	Eigen::EigenSolver<Eigen::MatrixXf> solver(XtX);
+	
+	if (solver.info() != Eigen::Success) {
+		ESP_LOGE(TAG, "Eigen decomposition failed!");
+		return ESP_FAIL;
+	}
+	// Get the eigenvalues and eigenvectors
+	Eigen::VectorXf eigenvalues = solver.eigenvalues().real();
+	Eigen::MatrixXf eigenvectors = solver.eigenvectors().real();
+	
+	/*
+	// Print using ESP_LOGI the eigenvalues and eigenvectors
+	ESP_LOGI(TAG, "Eigenvalues:");
+	for (int i = 0; i < eigenvalues.size(); i++) {
+		ESP_LOGI(TAG, "%.6f", eigenvalues(i));
+	}
+	ESP_LOGI(TAG, "Eigenvectors:");
+	for (int i = 0; i < eigenvectors.cols(); i++) {
+		ESP_LOGI(TAG, "Eigenvector %d:", i);
+		for (int j = 0; j < eigenvectors.rows(); j++) {
+			ESP_LOGI(TAG, "%.6f", eigenvectors(j, i));
+		}
+		float norm = eigenvectors.col(i).norm();
+		ESP_LOGI(TAG, "Eigenvector %d norm: %.6f", i, norm);
+	}
+	*/
+	
+	/* Encontrar o índice do menor autovalor */
+	int minIndex;
+	eigenvalues.minCoeff(&minIndex);
+	ESP_LOGI(TAG, "Minimum eigenvalue index: %d", minIndex);
+	ESP_LOGI(TAG, "Minimum eigenvalue: %.6f", eigenvalues(minIndex));
+
+	/* Encontrar o autovetor corresponedente ao mínimo autovalor */
+	Eigen::VectorXf minEigenvector = eigenvectors.col(minIndex);
+	ESP_LOGI(TAG, "Minimum eigenvector:");
+	for (int i = 0; i < minEigenvector.size(); i++) {
+		ESP_LOGI(TAG, "%.6f", minEigenvector(i));
+	}
+
+	/* Ellipsoid Fit Matrix */
+	Eigen::Matrix3f A;
+	A(0,0) = minEigenvector(0); // beta0
+	A(0,1) = minEigenvector(1); // beta1
+	A(0,2) = minEigenvector(2); // beta2
+	A(1,0) = minEigenvector(1); // beta1
+	A(1,1) = minEigenvector(3); // beta3
+	A(1,2) = minEigenvector(4); // beta4
+	A(2,0) = minEigenvector(2); // beta2
+	A(2,1) = minEigenvector(4); // beta4
+	A(2,2) = minEigenvector(5); // beta5
+
+	/* Hard Iron Vector */
+	Eigen::Vector3f V;
+	V = -(1/2) * A.inverse() * Eigen::Vector3f(minEigenvector(6), minEigenvector(7), minEigenvector(8));
+	ESP_LOGI(TAG, "Hard Iron Offset Vector:");
+	for (int i = 0; i < V.size(); i++) {
+		ESP_LOGI(TAG, "%.6f", V(i));
+	}
+
+	/* Inverse Soft Iron Matrix */
+	Eigen::EigenSolver<Eigen::MatrixXf> solver_A(A);
+	
+	if (solver_A.info() != Eigen::Success) {
+		ESP_LOGE(TAG, "Eigen decomposition of matrix 'A' failed!");
+		return ESP_FAIL;
+	}
+	// Get the eigenvalues and eigenvectors of A
+	Eigen::Vector3f eigenvalues_A = solver_A.eigenvalues().real();
+	Eigen::Matrix3f L = eigenvalues_A.asDiagonal(); // Diagonal matrix of eigenvalues
+	Eigen::Matrix3f Q = solver_A.eigenvectors().real(); // Eigenvectors matrix of A
+
+	// Cria sqrt_L com as raízes quadradas dos autovalores
+	Eigen::Vector3f sqrt_eigenvalues = eigenvalues_A.unaryExpr([](float x) { return sqrtf(fmaxf(x, 0.0f)); });
+	Eigen::Matrix3f sqrt_L = sqrt_eigenvalues.asDiagonal();
+
+	return ESP_OK; // Placeholder for future implementation
 }
 
 void MPU9250::printDataToTerminal()
@@ -727,11 +870,12 @@ void MPU9250::printDataToTerminal()
                 temData);
 }
 
-void MPU9250::timer(uint8_t seconds)
+void MPU9250::timer(uint8_t seconds, bool showCountdown)
 {
     // Timer de 10 segundos com exibição do tempo restante
     for (int i = seconds; i > 0; --i) {
-        ESP_LOGI(TAG, "Aguardando... %d segundos restantes.", i);
+        if (showCountdown)
+	    ESP_LOGI(TAG, "Aguardando... %d segundos restantes.", i);
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }

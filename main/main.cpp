@@ -58,6 +58,8 @@ extern "C" void app_main(void) {
 
     mpu9250.forceAccCalibration = false; // Força a calibração do acelerômetro        
     mpu9250.accCalibrate(nvs);
+
+    mpu9250.magCalibrate(nvs);
     
         while(1){
             mpu9250.gyrRead();

@@ -11,9 +11,11 @@
 #include "MPU9250_Configuration_Map.h"
 #include "MPU9250_Register_Map.h"
 #include <eigen3/Eigen/Eigen>
+#include <eigen3/Eigen/Eigenvalues>
 #include <iostream>
 #include "nvs_flash.h"
 #include "NVSUtils.h"
+#include <math.h>
 
 #define TAG "MPU9250"
 
@@ -67,7 +69,7 @@ class MPU9250 {
         	esp_err_t temRead();
 		esp_err_t temGetRead();
 
-		void timer(uint8_t seconds);
+		void timer(uint8_t seconds, bool showCountdown = true);	
 
 		void printDataToTerminal();
 
@@ -104,9 +106,9 @@ class MPU9250 {
 		/* Magnetômetro */
 		float	magScale = 0.1465f;
         	Vec3f	magData = Vec3f(0.0f, 0.0f, 0.0f);
-		int8_t	magNumSamplesCal = 100;	// Número de amostras para calibração do acc.
+		int8_t	magNumSamplesCal = 50;	// Número de amostras para calibração do acc.
 		bool	magCalibrated = false;
-		bool 	agCalibrationInProgress = false;
+		bool 	magCalibrationInProgress = false;
                 
 		/* Temperatura */
 		float	temData = 0.0f;
