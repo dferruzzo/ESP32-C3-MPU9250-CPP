@@ -633,6 +633,11 @@ esp_err_t MPU9250::temGetRead()
 
 esp_err_t MPU9250::magRead()
 {
+	if (!this->magCalibrated && !this->magCalibrationInProgress) {
+		ESP_LOGW(TAG, "Magnetometer calibration not completed. Please calibrate the magnetometer first.");
+		//return ESP_FAIL;
+	}
+
 	uint8_t pass_through = PASS_THROUGH_MODE;
 	uint8_t mag_single_measure = 0x01;
 
@@ -664,9 +669,23 @@ esp_err_t MPU9250::magRead()
 	// Read magnetometer data
 	uint8_t raw_data[6]; //6 for magnetometer data 
 	if (i2cManager->readRegFromDeviceWithHandle(*MPU9250_mag_handle_ptr, MPU9250_MAG_HXL, raw_data, 6) == ESP_OK) {
-    		magData.x = (float)(((int16_t)((raw_data[1] << 8) | raw_data[0])) * magScale);
-    		magData.y = (float)(((int16_t)((raw_data[3] << 8) | raw_data[2])) * magScale);
-    		magData.z = (float)(((int16_t)((raw_data[5] << 8) | raw_data[4])) * magScale);
+		if (this->magCalibrationInProgress || !this->magCalibrated) {
+    			this->magData.x = (float)(((int16_t)((raw_data[1] << 8) | raw_data[0])) * this->magScale);
+    			this->magData.y = (float)(((int16_t)((raw_data[3] << 8) | raw_data[2])) * this->magScale);
+    			this->magData.z = (float)(((int16_t)((raw_data[5] << 8) | raw_data[4])) * this->magScale);
+		} else if (this->magCalibrated) {
+			// Apply calibration
+
+	    		this->Bp(0) = (float)(((int16_t)((raw_data[1] << 8) | raw_data[0])) * this->magScale);
+	    		this->Bp(1) = (float)(((int16_t)((raw_data[3] << 8) | raw_data[2])) * this->magScale);
+	    		this->Bp(2) = (float)(((int16_t)((raw_data[5] << 8) | raw_data[4])) * this->magScale);
+
+	    		this->Bc = this->W_inv * (this->Bp - this->V);
+
+	    		this->magData.x = this->Bc(0);
+	    		this->magData.y = this->Bc(1);
+	    		this->magData.z = this->Bc(2);
+		}
 	} 
 	else {
 		ESP_LOGE(TAG, "Failed to read magnetometer data");
@@ -688,38 +707,40 @@ esp_err_t MPU9250::magGetRead()
 
 esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 {
-	/*
-	## Ten Parameter Magnetic Calibration Model
-	 - [ ] TODO: Coletar M medidas do magnetômetro em diferentes orientações
-	 - [ ] TODO: Aplicar o algoritmo de calibragem (elimir soft iron e hard iron effects)
-	 * */
+	this->magCalibrationInProgress = true;
+	// Use NVSUtils to read the flag
 	bool magCalibrationStored = false;
-	esp_err_t magCalStrError = NVSUtils::ReadBool(nvs, "magCalStr", magCalibrationStored); // Use NVSUtils to read the flag
+	esp_err_t magCalStrError = NVSUtils::ReadBool(nvs, "magCalStr", magCalibrationStored); 
 	if ((magCalStrError==ESP_OK) && magCalibrationStored && !forceMagCalibration) {
 		ESP_LOGI(TAG, "Magnetometer calibration already stored in NVS. Skipping calibration.");
 		// Read the calibration data from NVS
-		
-		/* - [ ] TODO: Implement reading calibration data from NVS here */
-		
+	    	esp_err_t readErrorMatrix = NVSUtils::ReadEigenMatrix(nvs, "magCalMat", this->W_inv);
+	    	if (readErrorMatrix != ESP_OK) {
+			ESP_LOGE(TAG, "Failed to read magnetometer calibration matrix from NVS: %s", esp_err_to_name(readErrorMatrix));
+			return readErrorMatrix; // Return error if writing to NVS failed
+	    	}
+	    	esp_err_t readErrorVector = NVSUtils::ReadEigenVector(nvs, "magCalVec", this->V);
+	    	if (readErrorVector != ESP_OK) {
+			ESP_LOGE(TAG, "Failed to read magnetometer calibration vector from NVS: %s", esp_err_to_name(readErrorVector));
+			return readErrorVector; // Return error if writing to NVS failed
+	    	}
+
 		// Set the calibration flag to true
-		magCalibrated = true; 
-		magCalibrationInProgress = false;
+            	this->magCalibrated = true;
+            	this->magCalibrationInProgress = false;
+            	this->magCalibrationFailed = false;
+
 		ESP_LOGI(TAG, "Magnetometer calibration data loaded from NVS.");
 		return ESP_OK; // Skip calibration if data is already stored
 	} else if (magCalStrError != ESP_OK) {
 		ESP_LOGW(TAG, "Failed to read magnetometer calibration status from NVS: %s", esp_err_to_name(magCalStrError));
-		forceMagCalibration = true;
+		this->forceMagCalibration = true;
 		//return magCalStrError; // Return error if reading from NVS failed
 	}
        	if(forceMagCalibration) {
 		ESP_LOGI(TAG, "Forcing magnetometer calibration.");
-		magCalibrationStored = false; // Force calibration	
 	}
 
-	magCalibrationInProgress = true;
-	
-	/* - [X] TODO: Criar matrizes para utilizar durante a calibração */
-	
 	ESP_LOGI(TAG, "*******************************************************");	
 	ESP_LOGI(TAG, "Iniciando a calibração do magnetômetro...");
 	ESP_LOGI(TAG, "*******************************************************");
@@ -727,134 +748,137 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 	
 	// Collecting "magNumSamplesCal" Samples
 	Eigen::VectorXf magSample(10);
-	//magSample.setZero(); // Optional: initialize all elements to zero	
-	//Eigen::MatrixXf X(magNumSamplesCal,10);
-	//X.setZero(); // Optional: initialize all elements to zero
-	/* Construi a matrix Xt*X */
 	Eigen::MatrixXf XtX(10,10);
-	XtX.setZero(); // Optional: initialize all elements to zero	
+	XtX.setZero(); 	
 
 	int count = 0;
-	while (count < magNumSamplesCal){
+	while (count < this->magNumSamplesCal){
 		
-		magRead();  // Lê os dados do magnetômetro
-		// Preencher o vetor de amostra
-		magSample(0) = magData.x * magData.x;
-		magSample(1) = 2*magData.x * magData.y;
-		magSample(2) = 2*magData.x * magData.z;
-		magSample(3) = magData.y*magData.y;
-		magSample(4) = 2*magData.y * magData.z;
-		magSample(5) = magData.z*magData.z;
-		magSample(6) = magData.x;
-		magSample(7) = magData.y;
-		magSample(8) = magData.z;
+		this->magRead();  // Lê os dados do magnetômetro
+		magSample(0) = this->magData.x * this->magData.x;
+		magSample(1) = 2 * this->magData.x * this->magData.y;
+		magSample(2) = 2* this->magData.x * this->magData.z;
+		magSample(3) = this->magData.y * this->magData.y;
+		magSample(4) = 2 * this->magData.y * this->magData.z;
+		magSample(5) = this->magData.z * this->magData.z;
+		magSample(6) = this->magData.x;
+		magSample(7) = this->magData.y;
+		magSample(8) = this->magData.z;
 		magSample(9) = 1.0f;
 
-		// Construir a matriz X
-		// Cada linha da matriz X corresponde a uma amostra
 		for (int r = 0; r < 10; r++) {
 			for (int s = 0; s < 10; s++) {
 				XtX(r,s) = XtX(r,s) + magSample(r)*magSample(s);
 			}
 		}
-		
-		timer(1.0, false);
-
-		ESP_LOGI(TAG, "Amostras coletadas: %d de %d", count+1, magNumSamplesCal);
-		
+		this->timer(1.0, false);
+		ESP_LOGI(TAG, "Amostras coletadas: %d de %d", count+1, this->magNumSamplesCal);
 		count++;
 	}
 	
-	/*	
-	// Mostra a matriz X using ESP_LOGI
-	ESP_LOGI(TAG, "Matriz XtX:");
-	for (int i = 0; i < XtX.rows(); i++) {
-		std::string row;
-	        for (int j = 0; j < XtX.cols(); j++) {
-			char buf[16];
-		        snprintf(buf, sizeof(buf), "%.3f ", XtX(i,j));
-                	row += buf;
-		}
-        ESP_LOGI(TAG, "%s", row.c_str());
-	}
-	*/
-	
 	/* - [X] TODO: Calcular os autovalores de XtX */
-	Eigen::EigenSolver<Eigen::MatrixXf> solver(XtX);
-	
-	if (solver.info() != Eigen::Success) {
+	Eigen::EigenSolver<Eigen::MatrixXf> solver_XtX(XtX);
+	if (solver_XtX.info() != Eigen::Success) {
 		ESP_LOGE(TAG, "Eigen decomposition failed!");
 		return ESP_FAIL;
 	}
 	// Get the eigenvalues and eigenvectors
-	Eigen::VectorXf eigenvalues = solver.eigenvalues().real();
-	Eigen::MatrixXf eigenvectors = solver.eigenvectors().real();
-	
-	/*
-	// Print using ESP_LOGI the eigenvalues and eigenvectors
-	ESP_LOGI(TAG, "Eigenvalues:");
-	for (int i = 0; i < eigenvalues.size(); i++) {
-		ESP_LOGI(TAG, "%.6f", eigenvalues(i));
-	}
-	ESP_LOGI(TAG, "Eigenvectors:");
-	for (int i = 0; i < eigenvectors.cols(); i++) {
-		ESP_LOGI(TAG, "Eigenvector %d:", i);
-		for (int j = 0; j < eigenvectors.rows(); j++) {
-			ESP_LOGI(TAG, "%.6f", eigenvectors(j, i));
-		}
-		float norm = eigenvectors.col(i).norm();
-		ESP_LOGI(TAG, "Eigenvector %d norm: %.6f", i, norm);
-	}
-	*/
-	
+	Eigen::VectorXf eigenvalues_XtX = solver_XtX.eigenvalues().real();
+	Eigen::MatrixXf eigenvectors_XtX = solver_XtX.eigenvectors().real();
+
 	/* Encontrar o índice do menor autovalor */
 	int minIndex;
-	eigenvalues.minCoeff(&minIndex);
-	ESP_LOGI(TAG, "Minimum eigenvalue index: %d", minIndex);
-	ESP_LOGI(TAG, "Minimum eigenvalue: %.6f", eigenvalues(minIndex));
+	eigenvalues_XtX.minCoeff(&minIndex);
+	//ESP_LOGI(TAG, "Minimum eigenvalue index: %d", minIndex);
+	ESP_LOGI(TAG, "Minimum eigenvalue of XtX: %.6f", eigenvalues_XtX(minIndex));
 
 	/* Encontrar o autovetor corresponedente ao mínimo autovalor */
-	Eigen::VectorXf minEigenvector = eigenvectors.col(minIndex);
-	ESP_LOGI(TAG, "Minimum eigenvector:");
-	for (int i = 0; i < minEigenvector.size(); i++) {
-		ESP_LOGI(TAG, "%.6f", minEigenvector(i));
-	}
+	Eigen::VectorXf minEigenvector_XtX = eigenvectors_XtX.col(minIndex);
+    	printEigenVector(TAG, "Minimum eigenvector of XtX", minEigenvector_XtX, 6);
 
 	/* Ellipsoid Fit Matrix */
 	Eigen::Matrix3f A;
-	A(0,0) = minEigenvector(0); // beta0
-	A(0,1) = minEigenvector(1); // beta1
-	A(0,2) = minEigenvector(2); // beta2
-	A(1,0) = minEigenvector(1); // beta1
-	A(1,1) = minEigenvector(3); // beta3
-	A(1,2) = minEigenvector(4); // beta4
-	A(2,0) = minEigenvector(2); // beta2
-	A(2,1) = minEigenvector(4); // beta4
-	A(2,2) = minEigenvector(5); // beta5
+	A(0,0) = minEigenvector_XtX(0); // beta0
+	A(0,1) = minEigenvector_XtX(1); // beta1
+	A(0,2) = minEigenvector_XtX(2); // beta2
+	A(1,0) = minEigenvector_XtX(1); // beta1
+	A(1,1) = minEigenvector_XtX(3); // beta3
+	A(1,2) = minEigenvector_XtX(4); // beta4
+	A(2,0) = minEigenvector_XtX(2); // beta2
+	A(2,1) = minEigenvector_XtX(4); // beta4
+	A(2,2) = minEigenvector_XtX(5); // beta5
+	printEigenMatrix(TAG, "Ellipsoid Fit Matrix A", A, 6);	
 
 	/* Hard Iron Vector */
-	Eigen::Vector3f V;
-	V = -(1/2) * A.inverse() * Eigen::Vector3f(minEigenvector(6), minEigenvector(7), minEigenvector(8));
-	ESP_LOGI(TAG, "Hard Iron Offset Vector:");
-	for (int i = 0; i < V.size(); i++) {
-		ESP_LOGI(TAG, "%.6f", V(i));
-	}
-
+	this->V = -(0.5f) * A.inverse() * Eigen::Vector3f(minEigenvector_XtX(6), minEigenvector_XtX(7), minEigenvector_XtX(8));
+	printEigenVector(TAG, "Hard Iron Offset Vector V", V, 6);
 	/* Inverse Soft Iron Matrix */
 	Eigen::EigenSolver<Eigen::MatrixXf> solver_A(A);
-	
 	if (solver_A.info() != Eigen::Success) {
 		ESP_LOGE(TAG, "Eigen decomposition of matrix 'A' failed!");
 		return ESP_FAIL;
 	}
 	// Get the eigenvalues and eigenvectors of A
 	Eigen::Vector3f eigenvalues_A = solver_A.eigenvalues().real();
-	Eigen::Matrix3f L = eigenvalues_A.asDiagonal(); // Diagonal matrix of eigenvalues
+    	printEigenVector(TAG, "Eigenvalues of matrix A", eigenvalues_A, 6);	
 	Eigen::Matrix3f Q = solver_A.eigenvectors().real(); // Eigenvectors matrix of A
-
+	printEigenMatrix(TAG, "Q - Eigenvectors of matrix A", Q, 6);
 	// Cria sqrt_L com as raízes quadradas dos autovalores
 	Eigen::Vector3f sqrt_eigenvalues = eigenvalues_A.unaryExpr([](float x) { return sqrtf(fmaxf(x, 0.0f)); });
 	Eigen::Matrix3f sqrt_L = sqrt_eigenvalues.asDiagonal();
+    	//ESP_LOGI(TAG, "Is sqrt_L diagonal matrix? %s", isDiagonalMatrix(sqrt_L) ? "Yes" : "No");
+	printEigenMatrix(TAG, "sqrt(L) - Square root of eigenvalues", sqrt_L, 6);
+
+    	// If any of the elements of sqrt_L are zero, log a warning
+	float zero_tol = 1e-6f;
+    	for (int i = 0; i < sqrt_L.rows(); i++) {
+        	if (sqrt_L(i, i) <= zero_tol) {
+			printEigenMatrix(TAG, "Matrix sqrt(L) causing issue", sqrt_L, 6);	
+            		ESP_LOGW(TAG, "Warning: sqrt_L has zero on its diagonal at index %d", i);
+            		ESP_LOGW(TAG, "É necessário coletar mais dados.");
+            		ESP_LOGW(TAG, "Calibração do magnetômetro não concluída.");
+            		this->magCalibrationFailed = true;
+            		this->magCalibrated = false;
+            		this->magCalibrationInProgress = false;
+			this->forceMagCalibration = true;
+            		return ESP_FAIL;
+        	}
+	}
+	/* - [X] TODO: Calcular W^{-1} */
+	this->W_inv = Q * sqrt_L * Q.inverse();
+	//printEigenMatrix(TAG, "Inverse Soft Iron Matrix W^{-1}", W_inv, 6);
+	//
+	/* Geomagnetic Field Strength */
+	float B = sqrtf( fabs(A(0,0)*V(0)*V(0) + A(1,1)*V(1)*V(1) + A(2,2)*V(2)*V(2) + 2*A(0,1)*V(0)*V(1) + 2*A(0,2)*V(0)*V(2) + 2*A(1,2)*V(1)*V(2) - minEigenvector_XtX(9) ));
+	ESP_LOGI(TAG, "Estimated Geomagnetic Field Strength: %.2f uT", B);
+	/* Fit error */
+	float fit_error = (1.0f/(2.0f * B*B)) * sqrtf( eigenvalues_XtX(minIndex) / this->magNumSamplesCal );
+	ESP_LOGI(TAG, "Magnetometer fit error: %.6f", fit_error);
+
+	ESP_LOGI(TAG, "Magnetometer calibration completed successfully.");
+
+	// Store calibration data in NVS
+	esp_err_t writeErrorMatrix = NVSUtils::WriteEigenMatrix(nvs, "magCalMat", this->W_inv);
+	if (writeErrorMatrix != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to write magnetometer calibration matrix to NVS: %s", esp_err_to_name(writeErrorMatrix));
+		return writeErrorMatrix; // Return error if writing to NVS failed
+	}
+	esp_err_t writeErrorVector = NVSUtils::WriteEigenVector(nvs, "magCalVec", this->V);
+	if (writeErrorVector != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to write magnetometer calibration vector to NVS: %s", esp_err_to_name(writeErrorVector));	
+		return writeErrorVector; // Return error if writing to NVS failed
+	}				 // 
+	esp_err_t writeErrorBool = NVSUtils::WriteBool(nvs, "magCalStr", true); // Set the flag to indicate calibration is stored
+	if (writeErrorBool != ESP_OK){
+		ESP_LOGE(TAG, "Failed to write magnetometer calibration status to NVS: %s", esp_err_to_name(writeErrorBool));
+		return writeErrorBool; // Return error if writing to NVS failed
+	}
+	nvs.Commit();
+	ESP_LOGI(TAG, "Magnetometer calibration data stored in NVS.");
+        		
+	this->magCalibrated = true;
+	this->magCalibrationInProgress = false;
+	this->magCalibrationFailed = false;
 
 	return ESP_OK; // Placeholder for future implementation
 }
@@ -863,7 +887,7 @@ void MPU9250::printDataToTerminal()
 {
 	// Print data in CSV format. The format is:
         // "GyrX,GyrY, GyrZ, AccX, AccY, AccZ, MagX, MagY, MagZ, Temp"
-        printf("%.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f\n",
+        printf("Gx: %.2f, Gy: %.2f, Gz: %.2f, Ax: %.2f, Ay: %.2f, Az: %.2f, Mx: %.2f, My: %.2f, Mz: %.2f, T: %.2f° \n",
                 gyroData.x, gyroData.y, gyroData.z, 
                 accData.x, accData.y, accData.z,
                 magData.x, magData.y, magData.z,

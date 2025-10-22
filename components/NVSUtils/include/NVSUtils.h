@@ -1,5 +1,35 @@
 #pragma once
 
+/**
+ * @file NVSUtils.h
+ * @brief Utility functions for reading/writing Eigen types to NVS (Non-Volatile Storage)
+ * 
+ * Examples:
+ * 
+ * // Eigen::Vector3f (fixed size - optimized, no metadata)
+ * Eigen::Vector3f gyroBias(0.1f, -0.2f, 0.05f);
+ * WriteVector3f(nvs, "gyro_bias", gyroBias);
+ * 
+ * Eigen::Vector3f readBias;
+ * ReadVector3f(nvs, "gyro_bias", readBias);
+ * 
+ * // Eigen::VectorXf (dynamic size - stores size as metadata)
+ * Eigen::VectorXf myVector(10);
+ * myVector.setRandom();
+ * WriteEigenVector(nvs, "my_data", myVector);
+ * 
+ * Eigen::VectorXf loadedVector;
+ * ReadEigenVector(nvs, "my_data", loadedVector);
+ * 
+ * // Eigen::MatrixXf
+ * Eigen::MatrixXf calibMatrix(4, 3);
+ * calibMatrix.setIdentity();
+ * WriteEigenMatrix(nvs, "calib_matrix", calibMatrix);
+ * 
+ * Eigen::MatrixXf loadedMatrix;
+ * ReadEigenMatrix(nvs, "calib_matrix", loadedMatrix);
+ */
+
 #include <eigen3/Eigen/Eigen>
 #include "pl_nvs.h"
 #include <string>
@@ -74,6 +104,60 @@ inline esp_err_t ReadEigenMatrix(PL::NvsNamespace& nvs, const std::string& key, 
     size_t dataSize = sizeof(float) * rows * cols;
     err = nvs.Read(key, mat.data(), dataSize, &dataSize);
     return err;
+}
+
+// Write Eigen::Vector (VectorXf, Vector3f, etc.) to NVS
+// Usage: WriteEigenVector(nvs, "my_vector", myVectorXf);
+//        WriteEigenVector(nvs, "gyro_bias", gyroVector3f);
+template<typename Derived>
+inline esp_err_t WriteEigenVector(PL::NvsNamespace& nvs, const std::string& key, const Eigen::MatrixBase<Derived>& vec) {
+    // Store size as metadata
+    std::string metaKey = key + "_size";
+    uint32_t size = static_cast<uint32_t>(vec.size());
+    esp_err_t err = nvs.Write(metaKey, &size, sizeof(size));
+    if (err != ESP_OK) return err;
+
+    // Store vector data as blob
+    return nvs.Write(key, vec.derived().data(), sizeof(typename Derived::Scalar) * vec.size());
+}
+
+// Read Eigen::Vector (VectorXf, Vector3f, etc.) from NVS
+// Usage: Eigen::VectorXf vec;
+//        ReadEigenVector(nvs, "my_vector", vec);
+template<typename VectorType>
+inline esp_err_t ReadEigenVector(PL::NvsNamespace& nvs, const std::string& key, VectorType& vec) {
+    // Read metadata (size)
+    std::string metaKey = key + "_size";
+    uint32_t size = 0;
+    size_t metaSize = sizeof(size);
+    esp_err_t err = nvs.Read(metaKey, &size, sizeof(size), &metaSize);
+    if (err != ESP_OK) return err;
+
+    if (size <= 0) return ESP_ERR_INVALID_SIZE;
+
+    // Resize vector (only for dynamic vectors like VectorXf)
+    if (vec.size() != size) {
+        vec.resize(size);
+    }
+
+    // Read vector data
+    size_t dataSize = sizeof(typename VectorType::Scalar) * size;
+    err = nvs.Read(key, vec.data(), dataSize, &dataSize);
+    return err;
+}
+
+// Write Eigen::Vector3f (fixed size) to NVS - optimized version (no metadata)
+// Usage: WriteVector3f(nvs, "gyro_bias", gyroBias);
+inline esp_err_t WriteVector3f(PL::NvsNamespace& nvs, const std::string& key, const Eigen::Vector3f& vec) {
+    return nvs.Write(key, vec.data(), sizeof(float) * 3);
+}
+
+// Read Eigen::Vector3f (fixed size) from NVS - optimized version (no metadata)
+// Usage: Eigen::Vector3f bias;
+//        ReadVector3f(nvs, "gyro_bias", bias);
+inline esp_err_t ReadVector3f(PL::NvsNamespace& nvs, const std::string& key, Eigen::Vector3f& vec) {
+    size_t dataSize = sizeof(float) * 3;
+    return nvs.Read(key, vec.data(), dataSize, &dataSize);
 }
 
 } // namespace NVSUtils

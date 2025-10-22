@@ -47,14 +47,15 @@ SCL  ────────┴────────────────
 - [x] TODO: Calibrate acc.
     - [x] TODO: Calcular matriz Y.
     - [x] TODO: Calcular matriz W.
-- [x] TODO: Gravar dados de calibração na EEPROM?
+- [x] TODO: Gravar dados de calibração na NVS (Non-volatile storage)?
     - [x] TODO: Revisar a função bool handleError(esp_err_t err, bool ignoreNotFound = false); no header NVSWrapper.h, pode estar produzindo um erro. CANCELADO!
     - [x] TODO: Utilizando pl_nvs component.
     - [x] TODO: Implementar as funções que gravam os dados no NVS.
     - [x] TODO: Gravar bias do gyro. Na calibração verificar se há armazanado bias.
     - [x] TODO: Gravar dados de calibração do aceleómetro. Na calibração verificar se há dados armazenados.
 - [ ] TODO: Calibrate mag.
-    - [ ] TODO: Gravar dados no NVS. Na calibração verificar se há dados guardados.
+    - [x] TODO: Gravar dados no NVS. Na calibração verificar se há dados guardados.
+    - [ ] TODO: Verificar as unidades dos dados do magnetómetro (µT) e fazer ajustes se necessário.
 - [ ] TODO: Kalman filter.
 - [ ] TODO: sensor fusion.
 

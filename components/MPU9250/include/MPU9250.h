@@ -22,17 +22,78 @@
 #define MPU9250_ADDRESS				0x68 // Endereço I2C do MPU9250
 #define MPU9250_MAGNETOMETER_ADDR	0x0C // Endereço I2C do AK8963 (magnetômetro)
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
+// C++ code follows - no C linkage for templates and classes
 struct Vec3f {
     float x;
     float y;
     float z;
     Vec3f() : x(0.0f), y(0.0f), z(0.0f) {}
     Vec3f(float x, float y, float z) : x(x), y(y), z(z) {}
-	};
+};
+
+// Standalone helper function - checks if an Eigen matrix is diagonal
+template<typename Derived>
+bool isDiagonalMatrix(const Eigen::MatrixBase<Derived>& matrix) {
+    // Check if all off-diagonal elements are zero
+    typedef typename Derived::Scalar Scalar;
+    for (int i = 0; i < matrix.rows(); ++i) {
+        for (int j = 0; j < matrix.cols(); ++j) {
+            if (i != j && matrix(i, j) != Scalar(0)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+// Standalone helper function - prints Eigen matrix using ESP_LOGI
+template<typename Derived>
+void printEigenMatrix(const char* tag, const char* name, const Eigen::MatrixBase<Derived>& matrix, int precision = 4) {
+    ESP_LOGI(tag, "%s [%dx%d]:", name, (int)matrix.rows(), (int)matrix.cols());
+    
+    for (int i = 0; i < matrix.rows(); ++i) {
+        // Build row string
+        char row_buffer[256];
+        int offset = 0;
+        
+        offset += snprintf(row_buffer + offset, sizeof(row_buffer) - offset, "  [");
+        
+        for (int j = 0; j < matrix.cols(); ++j) {
+            if (j > 0) {
+                offset += snprintf(row_buffer + offset, sizeof(row_buffer) - offset, ", ");
+            }
+            offset += snprintf(row_buffer + offset, sizeof(row_buffer) - offset, "%.*f", precision, (float)matrix(i, j));
+        }
+        
+        offset += snprintf(row_buffer + offset, sizeof(row_buffer) - offset, "]");
+        
+        ESP_LOGI(tag, "%s", row_buffer);
+    }
+}
+
+// Standalone helper function - prints Eigen vector using ESP_LOGI
+template<typename Derived>
+void printEigenVector(const char* tag, const char* name, const Eigen::MatrixBase<Derived>& vec, int precision = 4) {
+	int rows = vec.rows();
+	int cols = vec.cols();
+
+	if (!(rows == 1 || cols == 1)) {
+		ESP_LOGI(tag, "%s is not a vector (%dx%d)", name, rows, cols);
+		return;
+	}
+
+	int len = (rows == 1) ? cols : rows;
+	ESP_LOGI(tag, "%s [%dx%d]:", name, rows, cols);
+
+	char row_buffer[256];
+	for (int i = 0; i < len; ++i) {
+		int offset = 0;
+		offset += snprintf(row_buffer + offset, sizeof(row_buffer) - offset, "  [%d] ", i);
+		float val = static_cast<float>((rows == 1) ? vec(0, i) : vec(i, 0));
+		offset += snprintf(row_buffer + offset, sizeof(row_buffer) - offset, "%.*f", precision, val);
+		ESP_LOGI(tag, "%s", row_buffer);
+	}
+}
 
 class MPU9250 {
 
@@ -64,7 +125,7 @@ class MPU9250 {
 		esp_err_t magRead();
 		esp_err_t magGetRead();
 		esp_err_t magCalibrate(PL::NvsNamespace& nvs);
-
+		
 		/* Temperatura */
         	esp_err_t temRead();
 		esp_err_t temGetRead();
@@ -109,17 +170,16 @@ class MPU9250 {
 		int8_t	magNumSamplesCal = 50;	// Número de amostras para calibração do acc.
 		bool	magCalibrated = false;
 		bool 	magCalibrationInProgress = false;
-                
+		bool 	magCalibrationFailed = false;
+		Eigen::MatrixXf W_inv; 	// Matriz de calibração do magnetômetro
+		Eigen::VectorXf V; 	// Vetor de calibração do magnetômetro
+		
+		Eigen::Vector3f Bc; // Magnetometer corrected
+	    	Eigen::Vector3f Bp; // Magnetometer raw
 		/* Temperatura */
 		float	temData = 0.0f;
-		
-    };
-
+	
 };
-
-#ifdef __cplusplus
-
-#endif
 
 #endif // I2CMANAGER_HPP
 
