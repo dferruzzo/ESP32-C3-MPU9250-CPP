@@ -54,8 +54,13 @@ SCL  ────────┴────────────────
     - [x] TODO: Gravar bias do gyro. Na calibração verificar se há armazanado bias.
     - [x] TODO: Gravar dados de calibração do aceleómetro. Na calibração verificar se há dados armazenados.
 - [ ] TODO: Calibrate mag.
+    - [ ] TODO: Go to MPU9250 Internal Master mode (BYPASS_EN = 0) <<<---!!!
     - [x] TODO: Gravar dados no NVS. Na calibração verificar se há dados guardados.
-    - [ ] TODO: Verificar as unidades dos dados do magnetómetro (µT) e fazer ajustes se necessário.
+    - [x] TODO: Verificar as unidades dos dados do magnetómetro (µT) e fazer ajustes se necessário.
+    - [ ] TODO: Criar função magConfig()
+    - [ ] TODO: Verificar ST2: Status 2: HOFL, BITM.
+    - [ ] TODO: Verificar CNTL1: MODE e BIT output setting.
+    - [ ] Implementar `checkDataDiversity()` para os dados coletados (distancia euclidiana entre amostras deve ser maior que 10 uT)
 - [ ] TODO: Kalman filter.
 - [ ] TODO: sensor fusion.
 
@@ -69,8 +74,14 @@ Utilize o `.devcontainer.json` para carregar o Docker container.
 
 No PowerShell:
 
+Obtenha o `BUSID` do seu dispositivo
+
 ```bash
- usbipd attach --wsl --busid 1-2 --auto-attach
+usbipd list
+```
+
+```bash
+usbipd attach --wsl --busid 1-2 --auto-attach
 ```
 
 para ter acesso ao usb no Windows dentro do container.

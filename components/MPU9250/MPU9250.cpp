@@ -629,7 +629,40 @@ esp_err_t MPU9250::temGetRead()
     return ESP_OK; 
 }
 
-//esp_err_t MPU9250::magConfig(){return ESP_OK;}
+esp_err_t MPU9250::magConfig()
+{
+    /*
+    Configuração do magnetômetro AK8963
+    - [ ] TODO: Read and configure all Registers needed for the magnetometer
+    - [ ] TODO: CNTL1: Control 1 - Continuous Measurement Mode 2
+    */
+    return ESP_OK;
+}
+
+esp_err_t MPU9250::readMagnetometerASA() 
+{
+    // Switch to Fuse ROM access mode
+    uint8_t asa_data[3];
+    
+    // Read sensitivity adjustment values
+    esp_err_t ret = i2cManager->readRegFromDeviceWithHandle(*MPU9250_mag_handle_ptr, 
+                                                           AK8963_ASAX, asa_data, 3);
+    if (ret != ESP_OK) return ret;
+    
+    // Calculate adjusted sensitivity
+    float asax = (asa_data[0] - 128) / 256.0f + 1.0f;
+    float asay = (asa_data[1] - 128) / 256.0f + 1.0f;
+    float asaz = (asa_data[2] - 128) / 256.0f + 1.0f;
+    
+    // Apply to scale factors
+    this->magScaleX = this->magScale * asax;
+    this->magScaleY = this->magScale * asay;
+    this->magScaleZ = this->magScale * asaz;
+    
+    ESP_LOGI(TAG, "ASA values: X=%.3f, Y=%.3f, Z=%.3f", asax, asay, asaz);
+    this->magReadMagASA = true;
+    return ESP_OK;
+}
 
 esp_err_t MPU9250::magRead()
 {
@@ -641,7 +674,7 @@ esp_err_t MPU9250::magRead()
 	uint8_t pass_through = PASS_THROUGH_MODE;
 	uint8_t mag_single_measure = 0x01;
 
-	esp_err_t ret1, ret2;
+	esp_err_t ret1, ret2, ret3;
 	ret1 = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_INT_PIN_CFG, &pass_through, 1);  // configura o modo pass-through
 	ret2 = i2cManager->writeRegToDeviceWithHandle(*MPU9250_mag_handle_ptr, MPU9250_MAG_CNTL, &mag_single_measure,1);  // configura o endereço do AK8963
 
@@ -650,6 +683,15 @@ esp_err_t MPU9250::magRead()
     		return ESP_FAIL;
 	}
 
+    if (!this->magReadMagASA) {
+        ESP_LOGI(TAG, "Reading magnetometer ASA values for the first time...");
+        ret3= readMagnetometerASA();
+        if (ret3 != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to read magnetometer ASA");
+            return ret3;
+        }
+    }
+    
 	uint8_t data_ready = 0x00;
 	const int max_attempts = 100; // e.g., 100 attempts * 10ms = 1 second timeout
 	int attempts = 0;
@@ -659,7 +701,7 @@ esp_err_t MPU9250::magRead()
 			return ESP_FAIL;
 		}
 		vTaskDelay(pdMS_TO_TICKS(10));
-    		attempts++;
+    	attempts++;
 	}
 	if ((data_ready & 0x01) == 0) {
     		ESP_LOGE(TAG, "Timeout waiting for magnetometer data ready");
@@ -668,17 +710,22 @@ esp_err_t MPU9250::magRead()
 
 	// Read magnetometer data
 	uint8_t raw_data[6]; //6 for magnetometer data 
+    int16_t magX_raw, magY_raw, magZ_raw;
 	if (i2cManager->readRegFromDeviceWithHandle(*MPU9250_mag_handle_ptr, MPU9250_MAG_HXL, raw_data, 6) == ESP_OK) {
-		if (this->magCalibrationInProgress || !this->magCalibrated) {
-    			this->magData.x = (float)(((int16_t)((raw_data[1] << 8) | raw_data[0])) * this->magScale);
-    			this->magData.y = (float)(((int16_t)((raw_data[3] << 8) | raw_data[2])) * this->magScale);
-    			this->magData.z = (float)(((int16_t)((raw_data[5] << 8) | raw_data[4])) * this->magScale);
+        magX_raw = (int16_t)((raw_data[1] << 8) | raw_data[0]);
+    	magY_raw = (int16_t)((raw_data[3] << 8) | raw_data[2]);
+    	magZ_raw = (int16_t)((raw_data[5] << 8) | raw_data[4]);
+        
+        if (this->magCalibrationInProgress || !this->magCalibrated) {
+    	        //
+                this->magData.x = magX_raw * magScaleX;
+                this->magData.y = magY_raw * magScaleY;
+                this->magData.z = magZ_raw * magScaleZ;
 		} else if (this->magCalibrated) {
-			// Apply calibration
-
-	    		this->Bp(0) = (float)(((int16_t)((raw_data[1] << 8) | raw_data[0])) * this->magScale);
-	    		this->Bp(1) = (float)(((int16_t)((raw_data[3] << 8) | raw_data[2])) * this->magScale);
-	    		this->Bp(2) = (float)(((int16_t)((raw_data[5] << 8) | raw_data[4])) * this->magScale);
+		        //
+                this->Bp(0) = magX_raw * magScaleX;
+                this->Bp(1) = magY_raw * magScaleY;
+                this->Bp(2) = magZ_raw * magScaleZ;
 
 	    		this->Bc = this->W_inv * (this->Bp - this->V);
 
@@ -686,8 +733,7 @@ esp_err_t MPU9250::magRead()
 	    		this->magData.y = this->Bc(1);
 	    		this->magData.z = this->Bc(2);
 		}
-	} 
-	else {
+	} else {
 		ESP_LOGE(TAG, "Failed to read magnetometer data");
     		return ESP_FAIL;
 	}
@@ -700,7 +746,7 @@ esp_err_t MPU9250::magRead()
 esp_err_t MPU9250::magGetRead()
 {
 
-    ESP_LOGI(TAG, "Magnetometer Data (uT): X: %.2f Y: %.2f Z: %.2f", magData.x, magData.y, magData.z);
+    ESP_LOGI(TAG, "Magnetometer Data (uT): X: %.2f, Y: %.2f, Z: %.2f, B: %.2f", magData.x, magData.y, magData.z, magFieldStrength());
 
     return ESP_OK;
 }
@@ -883,15 +929,21 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 	return ESP_OK; // Placeholder for future implementation
 }
 
+float	MPU9250::magFieldStrength()
+{
+    return sqrtf(magData.x*magData.x + magData.y*magData.y + magData.z*magData.z);
+}; // Força do campo magnético em microteslas (uT)
+
+
 void MPU9250::printDataToTerminal()
 {
 	// Print data in CSV format. The format is:
         // "GyrX,GyrY, GyrZ, AccX, AccY, AccZ, MagX, MagY, MagZ, Temp"
-        printf("Gx: %.2f, Gy: %.2f, Gz: %.2f, Ax: %.2f, Ay: %.2f, Az: %.2f, Mx: %.2f, My: %.2f, Mz: %.2f, T: %.2f° \n",
+        printf("Gx: %.2f(°/s), Gy: %.2f(°/s), Gz: %.2f(°/s), Ax: %.2f(m/s2), Ay: %.2f(m/s2), Az: %.2f(m/s2), Mx: %.2f(uT), My: %.2f(uT), Mz: %.2f(uT), B: %.2f(uT), T: %.2f° \n",
                 gyroData.x, gyroData.y, gyroData.z, 
                 accData.x, accData.y, accData.z,
                 magData.x, magData.y, magData.z,
-                temData);
+                magFieldStrength(), temData);
 }
 
 void MPU9250::timer(uint8_t seconds, bool showCountdown)

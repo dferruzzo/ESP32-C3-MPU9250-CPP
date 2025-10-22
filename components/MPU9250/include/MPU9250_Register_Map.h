@@ -88,7 +88,8 @@
 #define MPU9250_MAG_HZL             0x07
 #define MPU9250_MAG_HZH             0x08
 #define MPU9250_MAG_CNTL            0x0A
-
-
+#define AK8963_ASAX                 0x10
+#define AK8963_ASAY                 0x11
+#define AK8963_ASAZ                 0x12
 
 #endif // MPU9250_REGISTER_MAP_H

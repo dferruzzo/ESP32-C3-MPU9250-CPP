@@ -2,7 +2,7 @@
     /* A name for the dev container displayed in the UI */
     "name": "ESP-IDF",
     /* container name when creating container */
-    "image": "espressif/idf:v5.4.1",
+    "image": "espressif/idf:v5.5",
     /* mount the local folder to /workspaces folder of Docker image */
     "workspaceMount": "source=${localWorkspaceFolder},target=/workspaces/${localWorkspaceFolderBasename},type=bind",
     /* the path of workspace folder, which means that this folder will be opened after container is running
