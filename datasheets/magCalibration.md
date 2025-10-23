@@ -25,7 +25,7 @@
     |4|: I2C_MST_P_NSR = 0 // 0: stop I2C master after transaction, 1: do not stop I2C master.
     |3-0|: I2C_MST_CLK[3:0] = 0000 = 0 // I2C master clock speed = 348 kHz (refer to Table 8 in the MPU-9250 Register Map and Descriptions document).
  
-    __value = 00000000(b) = 0x00(hex) = 0(dec)__
+    __value = 00000000(b) = 0x0D(hex) = 13(dec) (400Hz)__
 
 ---
 
@@ -69,12 +69,26 @@
 
 ---
 
-* *Register 99(dec) - I2C Slave 0 Data Out* 
+* *Register 0x63(hex), 99(dec) - I2C Slave 0 Data Out* 
     
     I2C_SLV0_DO is used to write data to the slave device. This register is not used when reading data from the AK8963.
 
 ---
 
+* *Register 0x6A(hex), 106(dec) - User Control*
+
+    |7|: Reserved                                VALUE: 0   
+    |6|: FIFO_EN:       1 - ENABLE, 0 - DISABLE, VALUE: 0
+    |5|: I2C_MST_EN:    1 - ENABLE, 0 - DISABLE, VALUE: 1
+    |4|: I2C_IF_DIS:    1 - ENABLE, 0 - DISABLE, VALUE: 0
+    |3|: Reserved                                VALUE: 0
+    |2|: FIFO_RST:      1 - ENABLE, 0 - DISABLE, VALUE: 0
+    |1|: I2C_MST_RST:   1 - ENABLE, 0 - DISABLE, VALUE: 0
+    |0|: SIG_COND_RST:  1 - ENABLE, 0 - DISABLE, VALUE: 0
+
+    __value: 00100000 = 0x20__     
+
+--- 
 ## Calibração do Magnetômetro
 
 [TechReport (Pedley2014): Magnetic Calibration (magnetic.c) Technical Note, Freescale, 2014](https://community.nxp.com/pwmxy87654/attachments/pwmxy87654/sensors/2638/1/Magnetic%20Calibration.pdf)

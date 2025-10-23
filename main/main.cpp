@@ -39,7 +39,7 @@ extern "C" void app_main(void) {
     I2CManager i2cManager;
     // i2cManager.scanI2CDevices();
     i2cManager.addDevice(MPU9250_ADDRESS);
-    i2cManager.addDevice(MPU9250_MAGNETOMETER_ADDR);
+    //i2cManager.addDevice(MPU9250_MAGNETOMETER_ADDR);
 
     MPU9250 mpu9250(&i2cManager);
 
@@ -72,8 +72,8 @@ extern "C" void app_main(void) {
         //mpu9250.accGetRead();
         //mpu9250.temRead();
         //mpu9250.temGetRead();
-        mpu9250.magRead();
-        mpu9250.magGetRead();
+        //mpu9250.magRead();
+        //mpu9250.magGetRead();
         //mpu9250.printDataToTerminal();
 
         vTaskDelay(pdMS_TO_TICKS(250));

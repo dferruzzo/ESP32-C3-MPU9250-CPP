@@ -61,6 +61,7 @@
 #define MPU9250_GYRO_YOUT_L         0x46
 #define MPU9250_GYRO_ZOUT_H         0x47
 #define MPU9250_GYRO_ZOUT_L         0x48
+#define MPU9250_I2C_SLV0_DO         0x63
 #define MPU9250_SIGNAL_PATH_RESET   0x68
 #define MPU9250_ACCEL_INTEL_CTRL    0x69
 #define MPU9250_USER_CTRL           0x6A
@@ -76,8 +77,9 @@
 #define MPU9250_YA_OFFSET_L         0x7B
 #define MPU9250_ZA_OFFSET_H         0x7D
 #define MPU9250_ZA_OFFSET_L         0x7E
+#define MPU9250_EXT_SENS_DATA_03    0x4C
 
-/* MAgnetometer */
+/* Magnetometer */
 
 #define MPU9250_MAG_WIA_ADDR        0x00 // Address to test
 #define MPU9250_MAG_DATA_RDY        0x02 // Data ready bit
@@ -91,5 +93,7 @@
 #define AK8963_ASAX                 0x10
 #define AK8963_ASAY                 0x11
 #define AK8963_ASAZ                 0x12
+#define AK8963_CNTL1                0x0A
+#define AK8963_CNTL2                0x0B    
 
 #endif // MPU9250_REGISTER_MAP_H

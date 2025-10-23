@@ -183,11 +183,9 @@ void I2CManager::writeRegToDevice(uint8_t dev_address, uint8_t reg_address, uint
         return;
     }
     
-    writeRegToDeviceWithHandle(deviceHandle, reg_address, data, length);
-
+    this->writeRegToDeviceWithHandle(deviceHandle, reg_address, data, length);
 
     return;
-
 }
 
 esp_err_t I2CManager::writeRegToDeviceWithHandle(i2c_master_dev_handle_t deviceHandle, uint8_t reg_address, uint8_t* data, size_t length){
@@ -204,7 +202,6 @@ esp_err_t I2CManager::writeRegToDeviceWithHandle(i2c_master_dev_handle_t deviceH
     return ESP_OK;
 
 }
-
 
 i2c_master_dev_handle_t* I2CManager::isDeviceInConfig(uint8_t address) {
     for (size_t i = 0; i < deviceConfigs.size(); i++) {
