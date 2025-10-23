@@ -312,7 +312,7 @@ esp_err_t MPU9250::accConfig(uint8_t fullScaleSel, uint8_t accelDlpfCfg)
     }
 
     // Init variables for calibration
-    self->accCalibrationMatrix = Eigen::MatrixXf::Zero(4, 3);
+    this->accCalibrationMatrix = Eigen::MatrixXf::Zero(4, 3);
     return ESP_OK;
 }
 
