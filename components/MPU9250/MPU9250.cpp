@@ -49,29 +49,26 @@ esp_err_t MPU9250::init()
     }
     ESP_LOGI(TAG, "MPU9250 initialized successfully");
 
-    // Init variables
-    accCalibrationMatrix = Eigen::MatrixXf::Zero(4, 3);
-
     return ESP_OK;
 }
 
 esp_err_t MPU9250::MPU9250Reset()
 {
-    // Reseta o giroscópio
+    // Reseta o MPU9250
 
     if (MPU9250_handle_ptr == nullptr) 
     {
-        ESP_LOGE(TAG, "MPU9250_handle_ptr is null, cannot reset gyroscope");
+        ESP_LOGE(TAG, "MPU9250_handle_ptr is null, cannot reset MPU9250");
         return ESP_FAIL;
     }
 
     uint8_t data = 1 << MPU9250_RESET_BIT; // Bit de reset
     esp_err_t ret = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_PWR_MGMT_1, &data, 1);
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to reset gyroscope");
+        ESP_LOGE(TAG, "Failed to reset MPU9250");
         return ret;
     }
-    ESP_LOGI(TAG, "Gyroscope reset successfully");
+    ESP_LOGI(TAG, "MPU9250 reset successfully");
     vTaskDelay(100 / portTICK_PERIOD_MS); // Wait 100ms for reset to complete
     return ESP_OK;
 
@@ -314,6 +311,8 @@ esp_err_t MPU9250::accConfig(uint8_t fullScaleSel, uint8_t accelDlpfCfg)
         return ESP_FAIL;
     }
 
+    // Init variables for calibration
+    self->accCalibrationMatrix = Eigen::MatrixXf::Zero(4, 3);
     return ESP_OK;
 }
 
@@ -636,6 +635,8 @@ esp_err_t MPU9250::magConfig()
     - [ ] TODO: Read and configure all Registers needed for the magnetometer
     - [ ] TODO: CNTL1: Control 1 - Continuous Measurement Mode 2
     */
+
+    
     return ESP_OK;
 }
 
