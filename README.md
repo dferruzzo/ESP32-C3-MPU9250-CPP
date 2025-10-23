@@ -54,9 +54,9 @@ SCL  ────────┴────────────────
     - [x] TODO: Gravar bias do gyro. Na calibração verificar se há armazanado bias.
     - [x] TODO: Gravar dados de calibração do aceleómetro. Na calibração verificar se há dados armazenados.
 - [ ] TODO: Calibrate mag.
-    - [ ] TODO: Go to MPU9250 Internal Master mode (BYPASS_EN = 0) <<<---!!!
     - [x] TODO: Gravar dados no NVS. Na calibração verificar se há dados guardados.
     - [x] TODO: Verificar as unidades dos dados do magnetómetro (µT) e fazer ajustes se necessário.
+    - [ ] TODO: Go to MPU9250 Internal Master mode (BYPASS_EN = 0) <<<---!!!
     - [ ] TODO: Criar função magConfig()
     - [ ] TODO: Verificar ST2: Status 2: HOFL, BITM.
     - [ ] TODO: Verificar CNTL1: MODE e BIT output setting.
