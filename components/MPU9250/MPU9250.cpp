@@ -73,7 +73,8 @@ esp_err_t MPU9250::MPU9250Reset()
 
 }
 
-esp_err_t MPU9250::enableI2CMaster() {
+esp_err_t MPU9250::enableI2CMaster() 
+{
     // Enable I2C master mode
     uint8_t user_ctrl = 0x20; // I2C_MST_EN bit
     esp_err_t ret = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, 
@@ -95,7 +96,8 @@ esp_err_t MPU9250::enableI2CMaster() {
     return ESP_OK;
 }
 
-esp_err_t MPU9250::writeAK8963RegisterViaSLV0(uint8_t ak8963_reg, uint8_t data) {
+esp_err_t MPU9250::writeAK8963RegisterViaSLV0(uint8_t ak8963_reg, uint8_t data) 
+{
     // Step 1: Configure SLV0 address (AK8963 address + write bit)
     uint8_t slv0_addr = MPU9250_MAGNETOMETER_ADDR; // 0x0C (write mode, bit 7 = 0)
     esp_err_t ret = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, 
@@ -151,12 +153,18 @@ esp_err_t MPU9250::readMagnetometerASAViaSLV0()
     // Configure SLV1 for reading ASA values from AK8963
     
     // Step 1: Set SLV1 address for reading (AK8963 address + read bit)
+    // MPU9250_I2C_SLV1_ADDR = 0x28
+    // MPU9250_MAGNETOMETER_ADDR = 0x0C	= 00001100
+    // 0x80 = 10000000
     uint8_t slv1_addr = MPU9250_MAGNETOMETER_ADDR | 0x80; // 0x8C (read mode, bit 7 = 1)
     ret = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, 
                                                 MPU9250_I2C_SLV1_ADDR, &slv1_addr, 1);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to set SLV1 address for ASA read");
         return ret;
+    }
+    else {
+	ESP_LOGI(TAG, "SLV1 address for ASA read set to 0x%02X", slv1_addr);
     }
     
     // Step 2: Set register address to start reading from (ASAX)
@@ -167,14 +175,22 @@ esp_err_t MPU9250::readMagnetometerASAViaSLV0()
         ESP_LOGE(TAG, "Failed to set SLV1 register for ASA read");
         return ret;
     }
+    else {
+	ESP_LOGI(TAG, "SLV1 register for ASA read set to 0x%02X", asa_start_reg);
+    }
     
     // Step 3: Enable SLV1 and set length to 3 bytes (ASAX, ASAY, ASAZ)
-    uint8_t slv1_ctrl = 0x83; // I2C_SLV1_EN (bit 7) + 3 bytes length
+    // MPU9250_I2C_SLV1_CTRL = 0x2A
+    uint8_t slv1_ctrl = 0x83;	// I2C_SLV1_EN (bit 7) + 3 bytes length
+				// 0x80 = 10000000 + 0x03 = 00000011  = 10000011 = 0x83
     ret = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, 
                                                 MPU9250_I2C_SLV1_CTRL, &slv1_ctrl, 1);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to enable SLV1 for ASA read");
         return ret;
+    }
+    else {
+	ESP_LOGI(TAG, "SLV1 enabled for ASA read with control byte 0x%02X", slv1_ctrl);
     }
     
     // Step 4: Wait for the I2C master to complete the transaction
@@ -182,7 +198,7 @@ esp_err_t MPU9250::readMagnetometerASAViaSLV0()
     uint8_t i2c_mst_status = 0;
     int timeout_count = 0;
     const int MAX_TIMEOUT = 100; // 1 second timeout
-    
+    //  MPU9250_I2C_MST_STATUS = 0x36
     do {
         vTaskDelay(pdMS_TO_TICKS(10));
         ret = i2cManager->readRegFromDeviceWithHandle(*MPU9250_handle_ptr, 
@@ -191,8 +207,11 @@ esp_err_t MPU9250::readMagnetometerASAViaSLV0()
             ESP_LOGE(TAG, "Failed to read I2C master status");
             return ret;
         }
+	else {
+		ESP_LOGI(TAG, "I2C master status: 0x%02X", i2c_mst_status);	
+	}
         timeout_count++;
-    } while (!(i2c_mst_status & 0x02) && timeout_count < MAX_TIMEOUT); // Wait for SLV1_NACK bit to be set or clear
+    } while ((i2c_mst_status & 0x02) && timeout_count < MAX_TIMEOUT); // Wait for SLV1_NACK bit to be set or clear
     
     if (timeout_count >= MAX_TIMEOUT) {
         ESP_LOGE(TAG, "Timeout waiting for SLV1 transaction to complete");
@@ -249,7 +268,8 @@ esp_err_t MPU9250::readMagnetometerASAViaSLV0()
     return ESP_OK;
 }
 
-esp_err_t MPU9250::gyrConfig(uint8_t fullScaleSel, uint8_t enableFilter, uint8_t gyroDlpfCfg){
+esp_err_t MPU9250::gyrConfig(uint8_t fullScaleSel, uint8_t enableFilter, uint8_t gyroDlpfCfg)
+{
 
 	if (fullScaleSel > 3) {
 		ESP_LOGE(TAG, "Invalid FS_SEL value: %d. Must be between 0 and 3.", fullScaleSel);
@@ -805,13 +825,16 @@ esp_err_t MPU9250::temGetRead()
 
 esp_err_t MPU9250::magConfig()
 {
-    ESP_LOGI(TAG, "Configuring AK8963 magnetometer for 400Hz continuous mode...");
+	ESP_LOGI(TAG, "Configuring AK8963 magnetometer for 400Hz continuous mode...");
     
     // Enable I2C master mode first
     esp_err_t ret = enableI2CMaster();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to enable I2C master");
         return ret;
+    }
+    else {
+	ESP_LOGI(TAG, "I2C master enabled successfully");
     }
     
     // Reset AK8963
@@ -820,14 +843,22 @@ esp_err_t MPU9250::magConfig()
         ESP_LOGE(TAG, "Failed to reset AK8963");
         return ret;
     }
+    else {
+	ESP_LOGI(TAG, "AK8963 reset successfully");
+    }
     
     vTaskDelay(pdMS_TO_TICKS(100)); // Wait for reset
     
     // Set to Fuse ROM access mode to read ASA values
-    ret = writeAK8963RegisterViaSLV0(AK8963_CNTL1, 0x0F); // Fuse ROM access
+    // CNTL1 register: [4:0] = 0x1F = 00011111b for Fuse ROM access and 16-bit output
+    // AK8963_CNTL1= 0x0A
+    ret = writeAK8963RegisterViaSLV0(AK8963_CNTL1, 0x1F); // Fuse ROM access
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to set Fuse ROM mode");
         return ret;
+    }
+    else {
+	ESP_LOGI(TAG, "AK8963 set to Fuse ROM access & 16-bit output mode successfully");
     }
     
     vTaskDelay(pdMS_TO_TICKS(10));

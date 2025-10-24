@@ -20,7 +20,7 @@
 #define TAG "MPU9250"
 
 #define MPU9250_ADDRESS				0x68 // Endereço I2C do MPU9250
-#define MPU9250_MAGNETOMETER_ADDR	0x0C // Endereço I2C do AK8963 (magnetômetro)
+#define MPU9250_MAGNETOMETER_ADDR		0x0C // Endereço I2C do AK8963 (magnetômetro)
 
 // C++ code follows - no C linkage for templates and classes
 struct Vec3f {
