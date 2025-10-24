@@ -28,5 +28,5 @@
     },
     "idf.port": "/dev/ttyACM0",
     "idf.flashType": "UART",
-    "idf.pythonInstallPath": "/usr/bin/python"
+    "idf.pythonInstallPath": "/usr/bin/python3"
 }

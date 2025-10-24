@@ -77,6 +77,7 @@
 #define MPU9250_YA_OFFSET_L         0x7B
 #define MPU9250_ZA_OFFSET_H         0x7D
 #define MPU9250_ZA_OFFSET_L         0x7E
+#define MPU9250_EXT_SENS_DATA_00    0x49
 #define MPU9250_EXT_SENS_DATA_03    0x4C
 
 /* Magnetometer */

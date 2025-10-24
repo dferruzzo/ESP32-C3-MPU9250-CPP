@@ -167,11 +167,11 @@ class MPU9250 {
 		Eigen::MatrixXf accCalibrationMatrix; // Matriz de calibração do acelerômetro
 		
 		/* Magnetômetro */
-		float magScaleX;
-		float magScaleY;
-		float magScaleZ;
+		float 	magScaleX;
+		float 	magScaleY;
+		float 	magScaleZ;
 		float	magScale = 4912.0f / 32760.0f; // Escala padrão do AK8963 em microteslas por LSB
-        Vec3f	magData = Vec3f(0.0f, 0.0f, 0.0f);
+       		Vec3f	magData = Vec3f(0.0f, 0.0f, 0.0f);
 		int8_t	magNumSamplesCal = 50;	// Número de amostras para calibração do acc.
 		bool	magCalibrated = false;
 		bool 	magCalibrationInProgress = false;
@@ -181,7 +181,7 @@ class MPU9250 {
 		float	magFieldStrength(); // Força do campo magnético em microteslas (uT)
 		bool 	magReadMagASA = false;
 		esp_err_t writeAK8963RegisterViaSLV0(uint8_t ak8963_reg, uint8_t data);
-		esp_err_t readMagnetometerASAViaSLV0();
+		esp_err_t readMagnetometerASAViaSLV1();
 
 		Eigen::Vector3f Bc; // Magnetometer corrected
 	    	Eigen::Vector3f Bp; // Magnetometer raw

@@ -133,14 +133,21 @@ esp_err_t MPU9250::writeAK8963RegisterViaSLV0(uint8_t ak8963_reg, uint8_t data)
     
     // Wait for the transaction to complete
     vTaskDelay(pdMS_TO_TICKS(10));
+
+// Disable SLV0 after the write to avoid occupying EXT_SENS data slots
+    uint8_t slv0_disable = 0x00;
+    ret = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr,
+                                                MPU9250_I2C_SLV0_CTRL, &slv0_disable, 1);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to disable SLV0 after write");
+        return ret;
+    }
     
     return ESP_OK;
 }
 
-esp_err_t MPU9250::readMagnetometerASAViaSLV0()
+esp_err_t MPU9250::readMagnetometerASAViaSLV1()
 {
-    /* - [ ] FIXME: This function is not working. */
-    
     ESP_LOGI(TAG, "Reading magnetometer ASA values via SLV1...");
 
     // First, ensure I2C master is enabled
@@ -182,7 +189,7 @@ esp_err_t MPU9250::readMagnetometerASAViaSLV0()
     // Step 3: Enable SLV1 and set length to 3 bytes (ASAX, ASAY, ASAZ)
     // MPU9250_I2C_SLV1_CTRL = 0x2A
     uint8_t slv1_ctrl = 0x83;	// I2C_SLV1_EN (bit 7) + 3 bytes length
-				// 0x80 = 10000000 + 0x03 = 00000011  = 10000011 = 0x83
+				// 0x80 = 10000000 + 0x03 = 1000011  = 10000011 = 0x83
     ret = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, 
                                                 MPU9250_I2C_SLV1_CTRL, &slv1_ctrl, 1);
     if (ret != ESP_OK) {
@@ -222,13 +229,16 @@ esp_err_t MPU9250::readMagnetometerASAViaSLV0()
     vTaskDelay(pdMS_TO_TICKS(20));
     
     // Step 5: Read the ASA data from external sensor data registers
-    // Note: SLV1 data starts at EXT_SENS_DATA_03 (SLV0 uses 00-02)
+    // Note: SLV1 data starts at EXT_SENS_DATA_00 (SLV0 uses 00-02)
     uint8_t asa_data[3];
     ret = i2cManager->readRegFromDeviceWithHandle(*MPU9250_handle_ptr, 
-                                                 MPU9250_EXT_SENS_DATA_03, asa_data, 3);
+                                                 MPU9250_EXT_SENS_DATA_00, asa_data, 3);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to read ASA data from external sensor registers");
         return ret;
+    }
+    else {
+	ESP_LOGI(TAG, "ASA data read: X=%d, Y=%d, Z=%d", asa_data[0], asa_data[1], asa_data[2]);
     }
     
     // Disable SLV1 to free it for other operations
@@ -825,7 +835,7 @@ esp_err_t MPU9250::temGetRead()
 
 esp_err_t MPU9250::magConfig()
 {
-	ESP_LOGI(TAG, "Configuring AK8963 magnetometer for 400Hz continuous mode...");
+    ESP_LOGI(TAG, "Configuring AK8963 magnetometer for 400Hz continuous mode...");
     
     // Enable I2C master mode first
     esp_err_t ret = enableI2CMaster();
@@ -834,19 +844,18 @@ esp_err_t MPU9250::magConfig()
         return ret;
     }
     else {
-	ESP_LOGI(TAG, "I2C master enabled successfully");
+	ESP_LOGI(TAG, "I2C master enabled to 400 kHz successfully");
     }
     
-    // Reset AK8963
+    // Soft-Reset AK8963
     ret = writeAK8963RegisterViaSLV0(AK8963_CNTL2, 0x01); // Soft reset
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to reset AK8963");
         return ret;
     }
     else {
-	ESP_LOGI(TAG, "AK8963 reset successfully");
+	ESP_LOGI(TAG, "AK8963 Soft reset successfully");
     }
-    
     vTaskDelay(pdMS_TO_TICKS(100)); // Wait for reset
     
     // Set to Fuse ROM access mode to read ASA values
@@ -859,12 +868,11 @@ esp_err_t MPU9250::magConfig()
     }
     else {
 	ESP_LOGI(TAG, "AK8963 set to Fuse ROM access & 16-bit output mode successfully");
-    }
-    
+    }// registers from 02H to 09H are initialized. 
     vTaskDelay(pdMS_TO_TICKS(10));
     
     // Read ASA values via SLV0
-    ret = readMagnetometerASAViaSLV0();
+    ret = readMagnetometerASAViaSLV1();
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to read ASA values via SLV0");
         return ret;
@@ -883,7 +891,7 @@ esp_err_t MPU9250::magConfig()
     // CNTL1 register: [4:0] = 0x18 for continuous mode 400Hz, 16-bit
     ret = writeAK8963RegisterViaSLV0(AK8963_CNTL1, 0x18); // Continuous mode 400Hz, 16-bit
     if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set 400Hz continuous mode");
+        ESP_LOGE(TAG, "Failed to set 100Hz continuous mode");
         return ret;
     }
     

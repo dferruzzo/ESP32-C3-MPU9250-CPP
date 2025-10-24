@@ -70,7 +70,7 @@
 ---
 
 * *Register 0x63(hex), 99(dec) - I2C Slave 0 Data Out* 
-    
+
     I2C_SLV0_DO is used to write data to the slave device. This register is not used when reading data from the AK8963.
 
 ---
@@ -86,9 +86,65 @@
     |1|: I2C_MST_RST:   1 - ENABLE, 0 - DISABLE, VALUE: 0
     |0|: SIG_COND_RST:  1 - ENABLE, 0 - DISABLE, VALUE: 0
 
-    __value: 00100000 = 0x20__     
+    __value: 00100000 = 0x20__
 
 --- 
+
+## Como ler a FUSE ROM do AK8963 para calibração
+
+0. _Preliminar: Configurar o MPU-9250 para o modo I2C Master_ 
+```
+    // Enable I2C master mode
+    //writeReg(MPU9250_USER_CTRL, 0x20);   // I2C_MST_EN = 1
+    //writeReg(MPU9250_I2C_MST_CTRL, 0x0D); // 400 kHz clock for internal bus
+    // OKAY, já feito na inicialização magConfig()
+    esp_err_t MPU9250::enableI2CMater()
+    ```
+1. _Step 1: Power down AK8963_
+```
+    // SLV0 = write to AK8963
+    //writeReg(MPU9250_I2C_SLV0_ADDR, 0x0C);   // 7-bit addr = 0x0C, write (MSB=0)
+    //writeReg(MPU9250_I2C_SLV0_REG, 0x0A);    // CNTL1 register
+    //writeReg(MPU9250_I2C_SLV0_DO, 0x00);     // Power down
+    //writeReg(MPU9250_I2C_SLV0_CTRL, 0x81);   // Enable, length=1 byte
+    //delay(2);
+    softreset()
+```   
+2. _Step 2: Enter Fuse ROM access mode_
+```
+    writeReg(MPU9250_I2C_SLV0_DO, 0x0F);     // Fuse ROM access mode
+    writeReg(MPU9250_I2C_SLV0_CTRL, 0x81);   // Enable, length=1 byte
+    delay(2);
+```
+3. _Step 3: configure SLV1 to read the Fuse ROM data_
+```
+    writeReg(MPU9250_I2C_SLV1_ADDR, 0x8C);   // 7-bit addr = 0x0C, read (MSB=1)
+    writeReg(MPU9250_I2C_SLV1_REG, 0x10);    // Starting register: ASAX
+    writeReg(MPU9250_I2C_SLV1_CTRL, 0x83);   // Enable, length=3 bytes
+    delay(2);
+```
+4. _Step 4: Read the data from EXT_SENS_DATA_00, 01, 02_
+```
+    uint8_t ASA[3]; // X, Y,  axes sensitivity adjustment values
+    readRegs(_DATA_00, 3, &ASA[0]);
+```
+5. _Step 5: Power down AK8963 again_
+```
+    writeReg(MPU9250_I2C_SLV0_ADDR, 0x0C);   // 7-bit addr = 0x0C, write (MSB=0)
+    writeReg(MPU9250_I2C_SLV0_REG, 0x0A);    // CNTL1 register
+    writeReg(MPU9250_I2C_SLV0_DO, 0x00);     // Power down
+    writeReg(MPU9250_I2C_SLV0_CTRL, 0x81);   // Enable, length=1 byte
+    delay(2);
+```
+6. _Step 6: Calculate the sensitivity adjustment values_
+```
+    float magCalibration[3];
+    magCalibration[0] =  (float)(ASA[0] - 128)/256.0f + 1.0f; // X axis
+    magCalibration[1] =  (float)(ASA[1] - 128)/256.0f + 1.0f; // Y axis
+    magCalibration[2] =  (float)(ASA[2] - 128)/256.0f + 1.0f; // Z axis
+```
+---
+
 ## Calibração do Magnetômetro
 
 [TechReport (Pedley2014): Magnetic Calibration (magnetic.c) Technical Note, Freescale, 2014](https://community.nxp.com/pwmxy87654/attachments/pwmxy87654/sensors/2638/1/Magnetic%20Calibration.pdf)
