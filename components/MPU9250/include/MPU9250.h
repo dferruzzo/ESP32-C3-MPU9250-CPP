@@ -124,7 +124,6 @@ class MPU9250 {
 		bool forceMagCalibration = false; // Força a calibração do magnetômetro
 		esp_err_t readMagnetometerASA();
 		esp_err_t magRead();
-		esp_err_t magRead_old();
 		esp_err_t magGetRead();
 		esp_err_t magCalibrate(PL::NvsNamespace& nvs);
 		
@@ -145,7 +144,6 @@ class MPU9250 {
 		i2c_master_dev_handle_t* MPU9250_handle_ptr = nullptr;
 		i2c_master_dev_handle_t* MPU9250_mag_handle_ptr = nullptr;
 		esp_err_t enableI2CMaster();
-		bool i2cMasterEnabled = false;
 		
 		/* Gyroscope data and calibration */
 		Vec3f gyroData = Vec3f(0.0f, 0.0f, 0.0f);
@@ -174,11 +172,10 @@ class MPU9250 {
 		float 	magScaleZ;
 		float	magScale = 4912.0f / 32760.0f; // Escala padrão do AK8963 em microteslas por LSB
        		Vec3f	magData = Vec3f(0.0f, 0.0f, 0.0f);
-		int8_t	magNumSamplesCal = 75;	// Número de amostras para calibração do acc.
+		int8_t	magNumSamplesCal = 50;	// Número de amostras para calibração do acc.
 		bool	magCalibrated = false;
 		bool 	magCalibrationInProgress = false;
 		bool 	magCalibrationFailed = false;
-		bool 	magConfigured = false;
 		Eigen::MatrixXf W_inv; 	// Matriz de calibração do magnetômetro
 		Eigen::VectorXf V; 	// Vetor de calibração do magnetômetro
 		float	magFieldStrength(); // Força do campo magnético em microteslas (uT)

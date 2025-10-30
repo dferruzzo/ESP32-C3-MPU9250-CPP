@@ -43,38 +43,40 @@ extern "C" void app_main(void) {
     MPU9250 mpu9250(&i2cManager);
 
     // Testando as configuracões do giro.
+    /*
+    mpu9250.gyrConfig(MPU9250_GYRO_FS_SEL_1000,
+                    MPU9250_FCHOICE_B_GYRO_FILTER_ENABLED,
+                    MPU9250_GYRO_DLPF_CFG_20HZ);
 
-    //mpu9250.gyrConfig(MPU9250_GYRO_FS_SEL_1000,
-    //                MPU9250_FCHOICE_B_GYRO_FILTER_ENABLED,
-    //                MPU9250_GYRO_DLPF_CFG_20HZ);
-
-   // mpu9250.forceGyroCalibration = false; // Força a calibração do giroscópio
-   // mpu9250.gyrCalibrate(nvs);
+    mpu9250.forceGyroCalibration = false; // Força a calibração do giroscópio
+    mpu9250.gyrCalibrate(nvs);
 
     // Testando conf do acelerômetro.
-    //mpu9250.accConfig(MPU9250_ACCEL_FS_SEL_4,
-    //    MPU9250_ACCEL_NO_FIL_BW_1046Hz);
+    mpu9250.accConfig(MPU9250_ACCEL_FS_SEL_4,
+        MPU9250_ACCEL_NO_FIL_BW_1046Hz);
 
-   // mpu9250.forceAccCalibration = false; // Força a calibração do acelerômetro        
-   // mpu9250.accCalibrate(nvs);
+    mpu9250.forceAccCalibration = false; // Força a calibração do acelerômetro        
+    mpu9250.accCalibrate(nvs);
+    */
     
     mpu9250.magConfig();
-    mpu9250.forceMagCalibration = true; // Força a calibração do magnetômetro	
-    mpu9250.magCalibrate(nvs);
+
+    //mpu9250.forceMagCalibration = true; // Força a calibração do magnetômetro	
+    //mpu9250.magCalibrate(nvs);
     
-    while(1){
+    //while(1){
     	//mpu9250.gyrRead();
         //mpu9250.gyrGetRead();
         //mpu9250.accRead();
         //mpu9250.accGetRead();
         //mpu9250.temRead();
         //mpu9250.temGetRead();
-        mpu9250.magRead();
-        mpu9250.magGetRead();
+        //mpu9250.magRead();
+        //mpu9250.magGetRead();
         //mpu9250.printDataToTerminal();
 
-        vTaskDelay(pdMS_TO_TICKS(250));
-    }
+        //vTaskDelay(pdMS_TO_TICKS(250));
+   // }
 
    //write_and_read_3f_vector();
    //write_and_read_eigen_matrix();
