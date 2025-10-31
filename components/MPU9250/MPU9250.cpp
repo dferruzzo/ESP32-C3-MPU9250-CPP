@@ -1098,13 +1098,10 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 	ESP_LOGI(TAG, "Iniciando a calibração do magnetômetro...");	
 	ESP_LOGI(TAG, "Gire o sensor em todas as direções para coletar os dados necessários.");
 	while (count < magNumSamplesCal){
-		
 		this->magRead();  // Lê os dados do magnetômetro
-		
 		magCurrentSample[0] = this->magData.x;
 		magCurrentSample[1] = this->magData.y;
 		magCurrentSample[2] = this->magData.z;
-
 		if (isMagSampleOK(count, cols,  &magCurrentSample[0], &magSamplesMatrix[0][0])) {
 			magSamplesMatrix[count][0] = magCurrentSample[0];
 			magSamplesMatrix[count][1] = magCurrentSample[1];
@@ -1120,7 +1117,114 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 		}
 		this->timer(1.0, false);
 	}
+
+	// Sample to EigenVector and EigenMatrix
+	Eigen::VectorXf magSample(10);
+	Eigen::MatrixXf XtX(10,10);
+	XtX.setZero(); 	
+	count = 0;
+	while (count < this->magNumSamplesCal){
+		float x = magSamplesMatrix[count][0];
+		float y = magSamplesMatrix[count][1];
+		float z = magSamplesMatrix[count][2];
+		
+		magSample(0) = x * x; 	  // this->magData.x * this->magData.x;
+		magSample(1) = 2 * x * y; // 2 * this->magData.x * this->magData.y;
+		magSample(2) = 2 * x * z; // 2* this->magData.x * this->magData.z;
+		magSample(3) = y * y;     // this->magData.y * this->magData.y;
+		magSample(4) = 2 * y * z; // 2 * this->magData.y * this->magData.z;
+		magSample(5) = z * z;     // this->magData.z * this->magData.z;
+		magSample(6) = x;         // this->magData.x;
+		magSample(7) = y;         // this->magData.y;
+		magSample(8) = z;         // this->magData.z;
+		magSample(9) = 1.0f;
+
+		for (int r = 0; r < 10; r++) {
+			for (int s = 0; s < 10; s++) {
+				XtX(r,s) = XtX(r,s) + magSample(r)*magSample(s);
+			}
+		}
+		count++;
+	}
 	
+	Eigen::EigenSolver<Eigen::MatrixXf> solver_XtX(XtX);
+	if (solver_XtX.info() != Eigen::Success) {
+		ESP_LOGE(TAG, "Eigen decomposition failed!");
+		return ESP_FAIL;
+	}
+	// Get the eigenvalues and eigenvectors
+	Eigen::VectorXf eigenvalues_XtX = solver_XtX.eigenvalues().real();
+	Eigen::MatrixXf eigenvectors_XtX = solver_XtX.eigenvectors().real();
+
+	/* Encontrar o índice do menor autovalor */
+	int minIndex;
+	eigenvalues_XtX.minCoeff(&minIndex);
+	//ESP_LOGI(TAG, "Minimum eigenvalue index: %d", minIndex);
+	ESP_LOGI(TAG, "Minimum eigenvalue of XtX: %.6f", eigenvalues_XtX(minIndex));
+
+	/* Encontrar o autovetor corresponedente ao mínimo autovalor */
+	Eigen::VectorXf minEigenvector_XtX = eigenvectors_XtX.col(minIndex);
+    	printEigenVector(TAG, "Minimum eigenvector of XtX", minEigenvector_XtX, 6);
+
+	/* Ellipsoid Fit Matrix */
+	Eigen::Matrix3f A;
+	A(0,0) = minEigenvector_XtX(0); // beta0
+	A(0,1) = minEigenvector_XtX(1); // beta1
+	A(0,2) = minEigenvector_XtX(2); // beta2
+	A(1,0) = minEigenvector_XtX(1); // beta1
+	A(1,1) = minEigenvector_XtX(3); // beta3
+	A(1,2) = minEigenvector_XtX(4); // beta4
+	A(2,0) = minEigenvector_XtX(2); // beta2
+	A(2,1) = minEigenvector_XtX(4); // beta4
+	A(2,2) = minEigenvector_XtX(5); // beta5
+	printEigenMatrix(TAG, "Ellipsoid Fit Matrix A", A, 6);	
+
+	/* Hard Iron Vector */
+	this->V = -(0.5f) * A.inverse() * Eigen::Vector3f(minEigenvector_XtX(6), minEigenvector_XtX(7), minEigenvector_XtX(8));
+	printEigenVector(TAG, "Hard Iron Offset Vector V", V, 6);
+	/* Inverse Soft Iron Matrix */
+	Eigen::EigenSolver<Eigen::MatrixXf> solver_A(A);
+	if (solver_A.info() != Eigen::Success) {
+		ESP_LOGE(TAG, "Eigen decomposition of matrix 'A' failed!");
+		return ESP_FAIL;
+	}
+	// Get the eigenvalues and eigenvectors of A
+	Eigen::Vector3f eigenvalues_A = solver_A.eigenvalues().real();
+    	printEigenVector(TAG, "Eigenvalues of matrix A", eigenvalues_A, 6);	
+	Eigen::Matrix3f Q = solver_A.eigenvectors().real(); // Eigenvectors matrix of A
+	printEigenMatrix(TAG, "Q - Eigenvectors of matrix A", Q, 6);
+	// Cria sqrt_L com as raízes quadradas dos autovalores
+	Eigen::Vector3f sqrt_eigenvalues = eigenvalues_A.unaryExpr([](float x) { return sqrtf(fmaxf(x, 0.0f)); });
+	Eigen::Matrix3f sqrt_L = sqrt_eigenvalues.asDiagonal();
+    	//ESP_LOGI(TAG, "Is sqrt_L diagonal matrix? %s", isDiagonalMatrix(sqrt_L) ? "Yes" : "No");
+	printEigenMatrix(TAG, "sqrt(L) - Square root of eigenvalues", sqrt_L, 6);
+
+    	// If any of the elements of sqrt_L are zero, log a warning
+	float zero_tol = 1e-6f;
+    	for (int i = 0; i < sqrt_L.rows(); i++) {
+        	if (sqrt_L(i, i) <= zero_tol) {
+			printEigenMatrix(TAG, "Matrix sqrt(L) causing issue", sqrt_L, 6);	
+            		ESP_LOGW(TAG, "Warning: sqrt_L has zero on its diagonal at index %d", i);
+            		ESP_LOGW(TAG, "É necessário coletar mais dados.");
+            		ESP_LOGW(TAG, "Calibração do magnetômetro não concluída.");
+            		this->magCalibrationFailed = true;
+            		this->magCalibrated = false;
+            		this->magCalibrationInProgress = false;
+			this->forceMagCalibration = true;
+            		return ESP_FAIL;
+        	}
+	}
+	this->W_inv = Q * sqrt_L * Q.inverse();
+	//printEigenMatrix(TAG, "Inverse Soft Iron Matrix W^{-1}", W_inv, 6);
+	//
+	/* Geomagnetic Field Strength */
+	float B = sqrtf( fabs(A(0,0)*V(0)*V(0) + A(1,1)*V(1)*V(1) + A(2,2)*V(2)*V(2) + 2*A(0,1)*V(0)*V(1) + 2*A(0,2)*V(0)*V(2) + 2*A(1,2)*V(1)*V(2) - minEigenvector_XtX(9) ));
+	ESP_LOGI(TAG, "Estimated Geomagnetic Field Strength: %.2f uT", B);
+	/* Fit error */
+	float fit_error = (1.0f/(2.0f * B*B)) * sqrtf( eigenvalues_XtX(minIndex) / this->magNumSamplesCal );
+	ESP_LOGI(TAG, "Magnetometer fit error: %.6f", fit_error);
+
+	ESP_LOGI(TAG, "Magnetometer calibration completed successfully.");
 	this->magCalibrationInProgress = false;
 	this->magCalibrated = true;
 	return ESP_OK;
@@ -1134,18 +1238,19 @@ bool MPU9250::isMagSampleOK(int rows, int cols, float *vector, float *matrix)
 			ESP_LOGI(TAG, "Amostra contem zeros ou NaN.");
 			return false; // Amostra inválida
 		}
-		else {
-			ESP_LOGI(TAG, "Amostra não contem nem zeros nem NaN.");
-		}
+		//else {
+		//	ESP_LOGI(TAG, "Amostra não contem nem zeros nem NaN.");
+		//}
 	}
 	// Verifica se a distancia euclidiana entre a amostra atual e as amostras anteriores é maior que um limiar
-	float threshold = 10.0f; // Defina um limiar adequado
+	float threshold = 0.5f; // Defina um limiar adequado
 	for (int k = 0; k < rows; k++){
 		float diffnorm = 0;
 		for (int j = 0; j < cols; j++){
 			float diff = matrix[k* cols + j] - vector[j];
 			diffnorm += diff * diff;
 			diffnorm = sqrtf(diffnorm);
+			//printf("Diffnorm: %.2f\n", diffnorm);
 			if (diffnorm < threshold) return false;
 		}
 	}

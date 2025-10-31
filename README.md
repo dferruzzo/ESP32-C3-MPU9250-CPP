@@ -62,7 +62,9 @@ SCL  ────────┴────────────────
     - [x] TODO: Criar função magConfig()
     - [x] TODO: Refazer a função magRead()
     - [ ] TODO: Refazer a calibração do magnetómetro magCalibrate().
-    - [ ] Implementar `checkDataDiversity()` para os dados coletados (distancia euclidiana entre amostras deve ser maior que 10 uT)
+        - [ ] TODO: Coletar dados em posições diferentes (criar uma func.).
+        - [ ] TODO: Armazenar os dados coletados.
+        - [ ] TODO: Verificar o calculo dos parâmetros da calibração (hard iron e soft iron).
 - [ ] TODO: Kalman filter.
 - [ ] TODO: sensor fusion.
 
