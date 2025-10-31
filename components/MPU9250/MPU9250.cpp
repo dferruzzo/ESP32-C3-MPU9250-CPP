@@ -1087,6 +1087,36 @@ esp_err_t MPU9250::magGetRead()
     return ESP_OK;
 }
 
+esp_err_t MPU9250::magGetSamples(float* matrix, int rows, int cols)
+{
+	float magCurrentSample[3]; 
+	int count = 0;
+	ESP_LOGI(TAG, "Iniciando a calibração do magnetômetro...");	
+	ESP_LOGI(TAG, "Gire o sensor em todas as direções para coletar os dados necessários.");
+	while (count < rows){
+		this->magRead();  // Lê os dados do magnetômetro
+		magCurrentSample[0] = this->magData.x;
+		magCurrentSample[1] = this->magData.y;
+		magCurrentSample[2] = this->magData.z;
+		if (isMagSampleOK(count, 3,  &magCurrentSample[0], matrix)) {
+			for (int j = 0; j < cols; j++) {
+				matrix[count*cols + j] = magCurrentSample[j];
+			}
+			count++;
+			ESP_LOGI(TAG, "Amostra válida: X:%.2f, Y:%.2f, Z:%.2f", 
+					magCurrentSample[0], magCurrentSample[1], magCurrentSample[2]);
+			ESP_LOGI(TAG, "Amostras coletadas: %d de %d", count, rows);
+		} 
+		else {
+			ESP_LOGI(TAG, "Amostra inválida. Descartando: X:%.2f, Y:%.2f, Z:%.2f", 
+					magCurrentSample[0], magCurrentSample[1], magCurrentSample[2]);
+		}
+		this->timer(1.0, false);
+	}
+	ESP_LOGI(TAG, "Magnetometer Samples Collected for Calibration: %d", rows);
+	return ESP_OK;
+}
+
 esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 {
 	this->magCalibrationInProgress = true;
@@ -1230,7 +1260,7 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 	return ESP_OK;
 }
 
-bool MPU9250::isMagSampleOK(int rows, int cols, float *vector, float *matrix)
+bool MPU9250::isMagSampleOK(int rows, int cols, float *vector, float* matrix)
 {
 	// Verifica se a amostra atual é válida (não é NaN ou infinito)
 	for (int i = 0; i < cols; i++) {
