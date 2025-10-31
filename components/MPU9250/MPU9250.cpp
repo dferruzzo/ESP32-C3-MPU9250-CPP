@@ -834,6 +834,15 @@ esp_err_t MPU9250::temGetRead()
 
 esp_err_t MPU9250::magConfig()
 {
+/* Configure AK8963 magnetometer for 100Hz continuous mode, 16-bit output
+ * Steps:
+ * 1. Enable I2C master mode on MPU9250 if not already enabled
+ * 2. Soft-reset AK8963 by writing 0x01 to CNTL2
+ * 3. Read ASA values from AK8963 via SLV1 if not already read 
+ * 4. Set AK8963 to power-down mode by writing 0x00 to CNTL1
+ * 5. Set AK8963 to continuous measurement mode 2 (100Hz, 16-bit) by writing 0x16 to CNTL1
+ * 6. Configure MPU9250 I2C Master to read AK8963 data registers via SLV0
+ * */
 	//ESP_LOGI(TAG, "Configuring AK8963 magnetometer for 100Hz continuous mode...");
  	esp_err_t ret;	
 	// Enable I2C master mode first
@@ -858,18 +867,6 @@ esp_err_t MPU9250::magConfig()
 	    	ESP_LOGI(TAG, "AK8963 Soft reset successfully");
     	}
     	vTaskDelay(pdMS_TO_TICKS(100)); // Wait for reset
-    	// Set to Fuse ROM access mode to read ASA values
-    	// CNTL1 register: [4:0] = 0x1F = 00011111b for Fuse ROM access and 16-bit output
-    	// AK8963_CNTL1= 0x0A
-    	ret = writeAK8963RegisterViaSLV0(AK8963_CNTL1, 0x1F); // Fuse ROM access
-    	if (ret != ESP_OK) {
-        	ESP_LOGE(TAG, "Failed to set Fuse ROM mode");
-        	return ret;
-    	}
-    	else {
-		ESP_LOGI(TAG, "AK8963 set to Fuse ROM access & 16-bit output mode successfully");
-    	}// registers from 02H to 09H are initialized. 
-    	vTaskDelay(pdMS_TO_TICKS(10));
     	// Read ASA values via SLV1
     	if (!this->magReadMagASA) {
 		ESP_LOGI(TAG, "Reading magnetometer ASA values for the first time via SLV1...");
@@ -894,7 +891,6 @@ esp_err_t MPU9250::magConfig()
         	return ret;
     	}
     	ESP_LOGI(TAG, "AK8963 magnetometer configured for 100Hz, 16-bit, continuous mode 2 successfully.");
-    	
 	// Iniciar leitura dos dados do magnetômetro
 	// Configurar o MPU9250 para ler os dados do AK8963 via I2C Master
 	// Configurar o Slave 0 para ler os dados do AK8963
@@ -903,7 +899,6 @@ esp_err_t MPU9250::magConfig()
 	// MPU9250_I2C_SLV0_REG = 0x26
 	// MPU9250_I2C_SLV0_CTRL = 0x27
 	// MPU9250_I2C_SLV0_DO = 0x63
-	
 	uint8_t slv0_addr = MPU9250_MAGNETOMETER_ADDR | 0x80; // Read operation
 	uint8_t slv0_reg = AK8963_ST1; // Starting register for magnetometer data
 	uint8_t slv0_ctrl = 0x88; // Enable, read 8 bytes
