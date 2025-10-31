@@ -124,6 +124,7 @@ class MPU9250 {
 		bool forceMagCalibration = false; // Força a calibração do magnetômetro
 		esp_err_t readMagnetometerASA();
 		esp_err_t magRead();
+		esp_err_t magRead_old();
 		esp_err_t magGetRead();
 		esp_err_t magCalibrate(PL::NvsNamespace& nvs);
 		

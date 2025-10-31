@@ -150,10 +150,13 @@ esp_err_t MPU9250::readMagnetometerASAViaSLV1()
     ESP_LOGI(TAG, "Reading magnetometer ASA values via SLV1...");
 
     // First, ensure I2C master is enabled
-    esp_err_t ret = enableI2CMaster();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to enable I2C master for ASA read");
-        return ret;
+    esp_err_t ret;
+    if (!this->I2CMasterEnabled) {
+	    ret = enableI2CMaster();
+	    if (ret != ESP_OK) {
+		    ESP_LOGE(TAG, "Failed to enable I2C master");
+		    return ret;
+	    }
     }
 
     // Configure SLV1 for reading ASA values from AK8963
@@ -891,6 +894,7 @@ esp_err_t MPU9250::magConfig()
         	return ret;
     	}
     	ESP_LOGI(TAG, "AK8963 magnetometer configured for 100Hz, 16-bit, continuous mode 2 successfully.");
+	vTaskDelay(pdMS_TO_TICKS(10));	
 	// Iniciar leitura dos dados do magnetômetro
 	// Configurar o MPU9250 para ler os dados do AK8963 via I2C Master
 	// Configurar o Slave 0 para ler os dados do AK8963
@@ -899,20 +903,19 @@ esp_err_t MPU9250::magConfig()
 	// MPU9250_I2C_SLV0_REG = 0x26
 	// MPU9250_I2C_SLV0_CTRL = 0x27
 	// MPU9250_I2C_SLV0_DO = 0x63
-	uint8_t slv0_addr = MPU9250_MAGNETOMETER_ADDR | 0x80; // Read operation
-	uint8_t slv0_reg = AK8963_ST1; // Starting register for magnetometer data
-	uint8_t slv0_ctrl = 0x88; // Enable, read 8 bytes
-				  // Bit 7: Enable
-				  // Bits [3:0]: Number of bytes to read (8)
-				  // 10001000b = 0x88
+	uint8_t slv1_addr = MPU9250_MAGNETOMETER_ADDR | 0x80; // Read operation
+	uint8_t slv1_reg = AK8963_ST1; // Starting register for magnetometer data
+	uint8_t slv1_ctrl = 0x88; // Enable, read 8 bytes // 10001000b = 0x88
 	esp_err_t ret1, ret2, ret3;			  	
-	ret1 = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_I2C_SLV0_ADDR, &slv0_addr, 1);	
-	ret2 = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_I2C_SLV0_REG, &slv0_reg, 1);
-	ret3 = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_I2C_SLV0_CTRL, &slv0_ctrl, 1);
+	ret1 = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_I2C_SLV1_ADDR, &slv1_addr, 1);	
+	ret2 = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_I2C_SLV1_REG, &slv1_reg, 1);
+	ret3 = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_I2C_SLV1_CTRL, &slv1_ctrl, 1);
 	if (ret1 != ESP_OK || ret2 != ESP_OK || ret3 != ESP_OK) {
 		ESP_LOGE(TAG, "Failed to configure MPU9250 I2C Master for AK8963 data reading");
 		return ESP_FAIL;
 	}
+	// wait 10 ms
+	vTaskDelay(pdMS_TO_TICKS(10));
 	ESP_LOGI(TAG, "MPU9250 I2C Master configured to read AK8963 data successfully.");	
 
 	this->magConfigured = true;
@@ -922,7 +925,8 @@ esp_err_t MPU9250::magConfig()
 
 esp_err_t MPU9250::readMagnetometerASA() 
 {
-    // Switch to Fuse ROM access mode
+    /* DEPRECATED */
+	// Switch to Fuse ROM access mode
     uint8_t asa_data[3];
     
     // Read sensitivity adjustment values
@@ -947,6 +951,61 @@ esp_err_t MPU9250::readMagnetometerASA()
 
 esp_err_t MPU9250::magRead()
 {
+	if (!this->magConfigured) {
+		ESP_LOGW(TAG, "Magnetometer not configured. Please configure the magnetometer first.");
+		return ESP_FAIL;
+	}
+	if (!this->magCalibrated && !this->magCalibrationInProgress) {
+		ESP_LOGW(TAG, "Magnetometer calibration not completed. Please calibrate the magnetometer first.");
+		//return ESP_FAIL;
+	}
+	// Read magnetometer data
+	uint8_t raw_data[8]; //6 for magnetometer data 
+    	int16_t magX_raw, magY_raw, magZ_raw;
+	uint8_t st1, st2;
+	if (i2cManager->readRegFromDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_EXT_SENS_DATA_00, raw_data, 8) == ESP_OK) {
+        	st1 = raw_data[0];
+		// Verify for DOR: Data Overrun
+		if (st1 & 0x02) {
+			ESP_LOGW(TAG, "Magnetometer data overrun occurred.");
+		}
+		st2 = raw_data[7];
+		// Verify for HOFL: Magnetic sensor overflow
+		if (st2 & 0x08) {
+			ESP_LOGW(TAG, "Magnetometer overflow occurred.");	
+		}
+		//
+		magX_raw = (int16_t)((raw_data[2] << 8) | raw_data[1]);
+    		magY_raw = (int16_t)((raw_data[4] << 8) | raw_data[3]);
+    		magZ_raw = (int16_t)((raw_data[6] << 8) | raw_data[5]);
+        	//
+        	if (this->magCalibrationInProgress || !this->magCalibrated) {
+                	this->magData.x = magX_raw * this->magScaleX;
+                	this->magData.y = magY_raw * this->magScaleY;
+                	this->magData.z = magZ_raw * this->magScaleZ;
+		} 
+		else if (this->magCalibrated) {
+		        //
+                	this->Bp(0) = magX_raw * magScaleX;
+                	this->Bp(1) = magY_raw * magScaleY;
+                	this->Bp(2) = magZ_raw * magScaleZ;
+
+	    		this->Bc = this->W_inv * (this->Bp - this->V);
+
+	    		this->magData.x = this->Bc(0);
+	    		this->magData.y = this->Bc(1);
+	    		this->magData.z = this->Bc(2);
+		}
+	} else {
+		ESP_LOGE(TAG, "Failed to read magnetometer data");
+    		return ESP_FAIL;
+	}
+	return ESP_OK;
+}
+
+esp_err_t MPU9250::magRead_old()
+{
+	/* DEPRECATED */
 	if (!this->magCalibrated && !this->magCalibrationInProgress) {
 		ESP_LOGW(TAG, "Magnetometer calibration not completed. Please calibrate the magnetometer first.");
 		//return ESP_FAIL;
