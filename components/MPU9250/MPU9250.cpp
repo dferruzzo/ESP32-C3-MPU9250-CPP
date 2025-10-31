@@ -75,25 +75,24 @@ esp_err_t MPU9250::MPU9250Reset()
 
 esp_err_t MPU9250::enableI2CMaster() 
 {
-    // Enable I2C master mode
-    uint8_t user_ctrl = 0x20; // I2C_MST_EN bit
-    esp_err_t ret = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, 
-                                                          MPU9250_USER_CTRL, &user_ctrl, 1);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to enable I2C master mode");
-        return ret;
-    }
-    
-    // Set I2C master clock speed (400kHz)
-    uint8_t i2c_mst_ctrl = 0x0D; // 400kHz
-    ret = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, 
-                                                MPU9250_I2C_MST_CTRL, &i2c_mst_ctrl, 1);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set I2C master clock");
-        return ret;
-    }
-    
-    return ESP_OK;
+	// Enable I2C master mode
+    	uint8_t user_ctrl = 0x20; // I2C_MST_EN bit
+    	esp_err_t ret = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, 
+			MPU9250_USER_CTRL, &user_ctrl, 1);
+    	if (ret != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to enable I2C master mode");
+        	return ret;
+    	}
+    	// Set I2C master clock speed (400kHz)
+    	uint8_t i2c_mst_ctrl = 0x0D; // 400kHz
+    	ret = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, 
+			MPU9250_I2C_MST_CTRL, &i2c_mst_ctrl, 1);
+    	if (ret != ESP_OK) {
+        	ESP_LOGE(TAG, "Failed to set I2C master clock");
+        	return ret;
+    	}
+    	this->I2CMasterEnabled = true;
+	return ESP_OK;
 }
 
 esp_err_t MPU9250::writeAK8963RegisterViaSLV0(uint8_t ak8963_reg, uint8_t data) 
@@ -835,68 +834,95 @@ esp_err_t MPU9250::temGetRead()
 
 esp_err_t MPU9250::magConfig()
 {
-    ESP_LOGI(TAG, "Configuring AK8963 magnetometer for 400Hz continuous mode...");
-    
-    // Enable I2C master mode first
-    esp_err_t ret = enableI2CMaster();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to enable I2C master");
-        return ret;
-    }
-    else {
-	ESP_LOGI(TAG, "I2C master enabled to 400 kHz successfully");
-    }
-    
-    // Soft-Reset AK8963
-    ret = writeAK8963RegisterViaSLV0(AK8963_CNTL2, 0x01); // Soft reset
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to reset AK8963");
-        return ret;
-    }
-    else {
-	ESP_LOGI(TAG, "AK8963 Soft reset successfully");
-    }
-    vTaskDelay(pdMS_TO_TICKS(100)); // Wait for reset
-    
-    // Set to Fuse ROM access mode to read ASA values
-    // CNTL1 register: [4:0] = 0x1F = 00011111b for Fuse ROM access and 16-bit output
-    // AK8963_CNTL1= 0x0A
-    ret = writeAK8963RegisterViaSLV0(AK8963_CNTL1, 0x1F); // Fuse ROM access
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set Fuse ROM mode");
-        return ret;
-    }
-    else {
-	ESP_LOGI(TAG, "AK8963 set to Fuse ROM access & 16-bit output mode successfully");
-    }// registers from 02H to 09H are initialized. 
-    vTaskDelay(pdMS_TO_TICKS(10));
-    
-    // Read ASA values via SLV0
-    ret = readMagnetometerASAViaSLV1();
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to read ASA values via SLV0");
-        return ret;
-    }
-    
-    // Set to power-down mode before switching to continuous mode
-    ret = writeAK8963RegisterViaSLV0(AK8963_CNTL1, 0x00); // Power down
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set power down mode");
-        return ret;
-    }
-    
-    vTaskDelay(pdMS_TO_TICKS(10));
-    
-    // Set to continuous measurement mode with 400Hz, 16-bit output
-    // CNTL1 register: [4:0] = 0x18 for continuous mode 400Hz, 16-bit
-    ret = writeAK8963RegisterViaSLV0(AK8963_CNTL1, 0x18); // Continuous mode 400Hz, 16-bit
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set 100Hz continuous mode");
-        return ret;
-    }
-    
-    ESP_LOGI(TAG, "AK8963 magnetometer configured for 400Hz continuous mode successfully");
-    return ESP_OK;
+	//ESP_LOGI(TAG, "Configuring AK8963 magnetometer for 100Hz continuous mode...");
+ 	esp_err_t ret;	
+	// Enable I2C master mode first
+    	if (!this->I2CMasterEnabled) {
+		ESP_LOGI(TAG, "I2C master mode not enabled. Enabling now...");
+    		ret = enableI2CMaster();
+    		if (ret != ESP_OK) {
+        		ESP_LOGE(TAG, "Failed to enable I2C master");
+        		return ret;
+    		}
+    		else {
+			ESP_LOGI(TAG, "I2C master enabled to 400 kHz successfully");
+    		}
+    	}	
+    	// Soft-Reset AK8963
+    	ret = writeAK8963RegisterViaSLV0(AK8963_CNTL2, 0x01);
+    	if (ret != ESP_OK) {
+	    	ESP_LOGE(TAG, "Failed to reset AK8963");
+	    	return ret;
+    	}
+    	else {
+	    	ESP_LOGI(TAG, "AK8963 Soft reset successfully");
+    	}
+    	vTaskDelay(pdMS_TO_TICKS(100)); // Wait for reset
+    	// Set to Fuse ROM access mode to read ASA values
+    	// CNTL1 register: [4:0] = 0x1F = 00011111b for Fuse ROM access and 16-bit output
+    	// AK8963_CNTL1= 0x0A
+    	ret = writeAK8963RegisterViaSLV0(AK8963_CNTL1, 0x1F); // Fuse ROM access
+    	if (ret != ESP_OK) {
+        	ESP_LOGE(TAG, "Failed to set Fuse ROM mode");
+        	return ret;
+    	}
+    	else {
+		ESP_LOGI(TAG, "AK8963 set to Fuse ROM access & 16-bit output mode successfully");
+    	}// registers from 02H to 09H are initialized. 
+    	vTaskDelay(pdMS_TO_TICKS(10));
+    	// Read ASA values via SLV1
+    	if (!this->magReadMagASA) {
+		ESP_LOGI(TAG, "Reading magnetometer ASA values for the first time via SLV1...");
+		ret = readMagnetometerASAViaSLV1();
+    		if (ret != ESP_OK) {
+        		ESP_LOGE(TAG, "Failed to read ASA values via SLV0");
+        		return ret;
+    		}
+	}
+    	// Set to power-down mode before switching to continuous mode
+    	ret = writeAK8963RegisterViaSLV0(AK8963_CNTL1, 0x00); // Power down
+    	if (ret != ESP_OK) {
+        	ESP_LOGE(TAG, "Failed to set power down mode");
+        	return ret;
+    	}
+   	vTaskDelay(pdMS_TO_TICKS(10));
+    	// CNTL1 register: 0x16 for continuous mode 100Hz, 16-bit, continous measurement mode 2
+	// 0x18 = 00010110b
+    	ret = writeAK8963RegisterViaSLV0(AK8963_CNTL1, 0x16); // Continuous mode 100Hz, 16-bit
+    	if (ret != ESP_OK) {
+        	ESP_LOGE(TAG, "Failed to set 100Hz continuous mode");
+        	return ret;
+    	}
+    	ESP_LOGI(TAG, "AK8963 magnetometer configured for 100Hz, 16-bit, continuous mode 2 successfully.");
+    	
+	// Iniciar leitura dos dados do magnetômetro
+	// Configurar o MPU9250 para ler os dados do AK8963 via I2C Master
+	// Configurar o Slave 0 para ler os dados do AK8963
+	// AK8963 data registers start at 0x03 and we need to read 7 bytes (HXL to ST2)
+	// MPU9250_I2C_SLV0_ADDR = 0x25
+	// MPU9250_I2C_SLV0_REG = 0x26
+	// MPU9250_I2C_SLV0_CTRL = 0x27
+	// MPU9250_I2C_SLV0_DO = 0x63
+	
+	uint8_t slv0_addr = MPU9250_MAGNETOMETER_ADDR | 0x80; // Read operation
+	uint8_t slv0_reg = AK8963_ST1; // Starting register for magnetometer data
+	uint8_t slv0_ctrl = 0x88; // Enable, read 8 bytes
+				  // Bit 7: Enable
+				  // Bits [3:0]: Number of bytes to read (8)
+				  // 10001000b = 0x88
+	esp_err_t ret1, ret2, ret3;			  	
+	ret1 = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_I2C_SLV0_ADDR, &slv0_addr, 1);	
+	ret2 = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_I2C_SLV0_REG, &slv0_reg, 1);
+	ret3 = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_I2C_SLV0_CTRL, &slv0_ctrl, 1);
+	if (ret1 != ESP_OK || ret2 != ESP_OK || ret3 != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to configure MPU9250 I2C Master for AK8963 data reading");
+		return ESP_FAIL;
+	}
+	ESP_LOGI(TAG, "MPU9250 I2C Master configured to read AK8963 data successfully.");	
+
+	this->magConfigured = true;
+	
+	return ESP_OK;
 }
 
 esp_err_t MPU9250::readMagnetometerASA() 

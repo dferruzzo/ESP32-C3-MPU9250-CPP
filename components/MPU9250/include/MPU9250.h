@@ -144,6 +144,7 @@ class MPU9250 {
 		i2c_master_dev_handle_t* MPU9250_handle_ptr = nullptr;
 		i2c_master_dev_handle_t* MPU9250_mag_handle_ptr = nullptr;
 		esp_err_t enableI2CMaster();
+    		bool I2CMasterEnabled = false;
 		
 		/* Gyroscope data and calibration */
 		Vec3f gyroData = Vec3f(0.0f, 0.0f, 0.0f);
@@ -180,6 +181,7 @@ class MPU9250 {
 		Eigen::VectorXf V; 	// Vetor de calibração do magnetômetro
 		float	magFieldStrength(); // Força do campo magnético em microteslas (uT)
 		bool 	magReadMagASA = false;
+		bool 	magConfigured = false;
 		esp_err_t writeAK8963RegisterViaSLV0(uint8_t ak8963_reg, uint8_t data);
 		esp_err_t readMagnetometerASAViaSLV1();
 

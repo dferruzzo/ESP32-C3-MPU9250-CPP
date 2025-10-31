@@ -64,7 +64,7 @@ extern "C" void app_main(void) {
     //mpu9250.forceMagCalibration = true; // Força a calibração do magnetômetro	
     //mpu9250.magCalibrate(nvs);
     
-    //while(1){
+    while(1){
     	//mpu9250.gyrRead();
         //mpu9250.gyrGetRead();
         //mpu9250.accRead();
@@ -75,8 +75,8 @@ extern "C" void app_main(void) {
         //mpu9250.magGetRead();
         //mpu9250.printDataToTerminal();
 
-        //vTaskDelay(pdMS_TO_TICKS(250));
-   // }
+        vTaskDelay(pdMS_TO_TICKS(250));
+    }
 
    //write_and_read_3f_vector();
    //write_and_read_eigen_matrix();

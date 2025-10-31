@@ -57,9 +57,10 @@ SCL  ────────┴────────────────
     - [x] TODO: Gravar dados no NVS. Na calibração verificar se há dados guardados.
     - [x] TODO: Verificar as unidades dos dados do magnetómetro (µT) e fazer ajustes se necessário.
     - [x] TODO: Go to MPU9250 Internal Master mode (BYPASS_EN = 0)
-    - [ ] TODO: Criar função magConfig()
     - [x] TODO: Verificar ST2: Status 2: HOFL, BITM.
     - [x] TODO: Verificar CNTL1: MODE e BIT output setting.
+    - [x] TODO: Criar função magConfig()
+    - [ ] TODO: Refazer a função magRead()
     - [ ] Implementar `checkDataDiversity()` para os dados coletados (distancia euclidiana entre amostras deve ser maior que 10 uT)
 - [ ] TODO: Kalman filter.
 - [ ] TODO: sensor fusion.
