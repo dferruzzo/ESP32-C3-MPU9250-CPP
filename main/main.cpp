@@ -60,7 +60,6 @@ extern "C" void app_main(void) {
     */
     
     mpu9250.magConfig();
-
     //mpu9250.forceMagCalibration = true; // Força a calibração do magnetômetro	
     //mpu9250.magCalibrate(nvs);
     

@@ -60,7 +60,8 @@ SCL  ────────┴────────────────
     - [x] TODO: Verificar ST2: Status 2: HOFL, BITM.
     - [x] TODO: Verificar CNTL1: MODE e BIT output setting.
     - [x] TODO: Criar função magConfig()
-    - [ ] TODO: Refazer a função magRead()
+    - [x] TODO: Refazer a função magRead()
+    - [ ] TODO: Refazer a calibração do magnetómetro magCalibrate().
     - [ ] Implementar `checkDataDiversity()` para os dados coletados (distancia euclidiana entre amostras deve ser maior que 10 uT)
 - [ ] TODO: Kalman filter.
 - [ ] TODO: sensor fusion.

@@ -97,5 +97,6 @@
 #define AK8963_CNTL1                0x0A
 #define AK8963_CNTL2                0x0B    
 #define AK8963_ST1                  0x02
+#define AK8963_HXL                  0x03
 
 #endif // MPU9250_REGISTER_MAP_H

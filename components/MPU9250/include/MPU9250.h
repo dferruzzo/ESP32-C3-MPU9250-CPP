@@ -127,6 +127,7 @@ class MPU9250 {
 		esp_err_t magRead_old();
 		esp_err_t magGetRead();
 		esp_err_t magCalibrate(PL::NvsNamespace& nvs);
+		esp_err_t magCalibrate_old(PL::NvsNamespace& nvs);
 		
 		/* Temperatura */
         	esp_err_t temRead();
@@ -185,7 +186,7 @@ class MPU9250 {
 		bool 	magConfigured = false;
 		esp_err_t writeAK8963RegisterViaSLV0(uint8_t ak8963_reg, uint8_t data);
 		esp_err_t readMagnetometerASAViaSLV1();
-
+		bool isMagSampleOK(int rows, int cols, float *vector, float *matrix);
 		Eigen::Vector3f Bc; // Magnetometer corrected
 	    	Eigen::Vector3f Bp; // Magnetometer raw
 		/* Temperatura */

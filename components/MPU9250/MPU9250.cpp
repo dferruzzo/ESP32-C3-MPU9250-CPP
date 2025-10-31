@@ -861,7 +861,7 @@ esp_err_t MPU9250::magConfig()
     		}
     	}	
     	// Soft-Reset AK8963
-    	ret = writeAK8963RegisterViaSLV0(AK8963_CNTL2, 0x01);
+	ret = writeAK8963RegisterViaSLV0(AK8963_CNTL2, 0x01);
     	if (ret != ESP_OK) {
 	    	ESP_LOGE(TAG, "Failed to reset AK8963");
 	    	return ret;
@@ -875,17 +875,17 @@ esp_err_t MPU9250::magConfig()
 		ESP_LOGI(TAG, "Reading magnetometer ASA values for the first time via SLV1...");
 		ret = readMagnetometerASAViaSLV1();
     		if (ret != ESP_OK) {
-        		ESP_LOGE(TAG, "Failed to read ASA values via SLV0");
+        		ESP_LOGE(TAG, "Failed to read ASA values via SLV1");
         		return ret;
     		}
 	}
-    	// Set to power-down mode before switching to continuous mode
+	// Set to power-down mode before switching to continuous mode
     	ret = writeAK8963RegisterViaSLV0(AK8963_CNTL1, 0x00); // Power down
     	if (ret != ESP_OK) {
         	ESP_LOGE(TAG, "Failed to set power down mode");
         	return ret;
     	}
-   	vTaskDelay(pdMS_TO_TICKS(10));
+   	vTaskDelay(pdMS_TO_TICKS(100));
     	// CNTL1 register: 0x16 for continuous mode 100Hz, 16-bit, continous measurement mode 2
 	// 0x18 = 00010110b
     	ret = writeAK8963RegisterViaSLV0(AK8963_CNTL1, 0x16); // Continuous mode 100Hz, 16-bit
@@ -904,8 +904,8 @@ esp_err_t MPU9250::magConfig()
 	// MPU9250_I2C_SLV0_CTRL = 0x27
 	// MPU9250_I2C_SLV0_DO = 0x63
 	uint8_t slv1_addr = MPU9250_MAGNETOMETER_ADDR | 0x80; // Read operation
-	uint8_t slv1_reg = AK8963_ST1; // Starting register for magnetometer data
-	uint8_t slv1_ctrl = 0x88; // Enable, read 8 bytes // 10001000b = 0x88
+	uint8_t slv1_reg = AK8963_HXL; // Starting register for magnetometer data
+	uint8_t slv1_ctrl = 0x87; // Enable, read 8 bytes // 10000111b = 0x88
 	esp_err_t ret1, ret2, ret3;			  	
 	ret1 = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_I2C_SLV1_ADDR, &slv1_addr, 1);	
 	ret2 = i2cManager->writeRegToDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_I2C_SLV1_REG, &slv1_reg, 1);
@@ -960,24 +960,20 @@ esp_err_t MPU9250::magRead()
 		//return ESP_FAIL;
 	}
 	// Read magnetometer data
-	uint8_t raw_data[8]; //6 for magnetometer data 
+	uint8_t raw_data[7]; //7 for magnetometer data 
     	int16_t magX_raw, magY_raw, magZ_raw;
-	uint8_t st1, st2;
-	if (i2cManager->readRegFromDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_EXT_SENS_DATA_00, raw_data, 8) == ESP_OK) {
-        	st1 = raw_data[0];
-		// Verify for DOR: Data Overrun
-		if (st1 & 0x02) {
-			ESP_LOGW(TAG, "Magnetometer data overrun occurred.");
-		}
-		st2 = raw_data[7];
+	uint8_t st2;
+	if (i2cManager->readRegFromDeviceWithHandle(*MPU9250_handle_ptr, MPU9250_EXT_SENS_DATA_00, raw_data, 7) == ESP_OK) {
+		//
+		st2 = raw_data[6];
 		// Verify for HOFL: Magnetic sensor overflow
 		if (st2 & 0x08) {
 			ESP_LOGW(TAG, "Magnetometer overflow occurred.");	
 		}
 		//
-		magX_raw = (int16_t)((raw_data[2] << 8) | raw_data[1]);
-    		magY_raw = (int16_t)((raw_data[4] << 8) | raw_data[3]);
-    		magZ_raw = (int16_t)((raw_data[6] << 8) | raw_data[5]);
+		magX_raw = (int16_t)((raw_data[1] << 8) | raw_data[0]);
+    		magY_raw = (int16_t)((raw_data[3] << 8) | raw_data[2]);
+    		magZ_raw = (int16_t)((raw_data[5] << 8) | raw_data[4]);
         	//
         	if (this->magCalibrationInProgress || !this->magCalibrated) {
                 	this->magData.x = magX_raw * this->magScaleX;
@@ -986,9 +982,9 @@ esp_err_t MPU9250::magRead()
 		} 
 		else if (this->magCalibrated) {
 		        //
-                	this->Bp(0) = magX_raw * magScaleX;
-                	this->Bp(1) = magY_raw * magScaleY;
-                	this->Bp(2) = magZ_raw * magScaleZ;
+                	this->Bp(0) = magX_raw * this->magScaleX;
+                	this->Bp(1) = magY_raw * this->magScaleY;
+                	this->Bp(2) = magZ_raw * this->magScaleZ;
 
 	    		this->Bc = this->W_inv * (this->Bp - this->V);
 
@@ -1086,13 +1082,79 @@ esp_err_t MPU9250::magRead_old()
 esp_err_t MPU9250::magGetRead()
 {
 
-    ESP_LOGI(TAG, "Magnetometer Data (uT): X: %.2f, Y: %.2f, Z: %.2f, B: %.2f", magData.x, magData.y, magData.z, magFieldStrength());
+    ESP_LOGI(TAG, "Magnetometer Data (uT): X: %.2f, Y: %.2f, Z: %.2f, B: %.2f", this->magData.x, this->magData.y, this->magData.z, this->magFieldStrength());
 
     return ESP_OK;
 }
 
 esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 {
+	this->magCalibrationInProgress = true;
+	int rows = this->magNumSamplesCal;
+	int cols = 3;
+	float magSamplesMatrix[rows][cols];
+	float magCurrentSample[cols]; 
+	int count = 0;
+	ESP_LOGI(TAG, "Iniciando a calibração do magnetômetro...");	
+	ESP_LOGI(TAG, "Gire o sensor em todas as direções para coletar os dados necessários.");
+	while (count < magNumSamplesCal){
+		
+		this->magRead();  // Lê os dados do magnetômetro
+		
+		magCurrentSample[0] = this->magData.x;
+		magCurrentSample[1] = this->magData.y;
+		magCurrentSample[2] = this->magData.z;
+
+		if (isMagSampleOK(count, cols,  &magCurrentSample[0], &magSamplesMatrix[0][0])) {
+			magSamplesMatrix[count][0] = magCurrentSample[0];
+			magSamplesMatrix[count][1] = magCurrentSample[1];
+			magSamplesMatrix[count][2] = magCurrentSample[2];
+			count++;
+			ESP_LOGI(TAG, "Amostra válida: X:%.2f, Y:%.2f, Z:%.2f", 
+					magCurrentSample[0], magCurrentSample[1], magCurrentSample[2]);
+			ESP_LOGI(TAG, "Amostras coletadas: %d de %d", count, this->magNumSamplesCal);
+		} 
+		else {
+			ESP_LOGI(TAG, "Amostra inválida. Descartando: X:%.2f, Y:%.2f, Z:%.2f", 
+					magCurrentSample[0], magCurrentSample[1], magCurrentSample[2]);
+		}
+		this->timer(1.0, false);
+	}
+	
+	this->magCalibrationInProgress = false;
+	this->magCalibrated = true;
+	return ESP_OK;
+}
+
+bool MPU9250::isMagSampleOK(int rows, int cols, float *vector, float *matrix)
+{
+	// Verifica se a amostra atual é válida (não é NaN ou infinito)
+	for (int i = 0; i < cols; i++) {
+		if (isnan(vector[i]) || isinf(vector[i])) {
+			ESP_LOGI(TAG, "Amostra contem zeros ou NaN.");
+			return false; // Amostra inválida
+		}
+		else {
+			ESP_LOGI(TAG, "Amostra não contem nem zeros nem NaN.");
+		}
+	}
+	// Verifica se a distancia euclidiana entre a amostra atual e as amostras anteriores é maior que um limiar
+	float threshold = 10.0f; // Defina um limiar adequado
+	for (int k = 0; k < rows; k++){
+		float diffnorm = 0;
+		for (int j = 0; j < cols; j++){
+			float diff = matrix[k* cols + j] - vector[j];
+			diffnorm += diff * diff;
+			diffnorm = sqrtf(diffnorm);
+			if (diffnorm < threshold) return false;
+		}
+	}
+    	return true; // Amostra válida e única
+}
+
+esp_err_t MPU9250::magCalibrate_old(PL::NvsNamespace& nvs)
+{
+	/* DEPRECATED */
 	this->magCalibrationInProgress = true;
 	// Use NVSUtils to read the flag
 	bool magCalibrationStored = false;
@@ -1271,8 +1333,8 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 
 float	MPU9250::magFieldStrength()
 {
-    return sqrtf(magData.x*magData.x + magData.y*magData.y + magData.z*magData.z);
-}; // Força do campo magnético em microteslas (uT)
+    return sqrtf(this->magData.x * this->magData.x + this->magData.y * this->magData.y + this->magData.z * this->magData.z);
+} // Força do campo magnético em microteslas (uT)
 
 void MPU9250::printDataToTerminal()
 {
