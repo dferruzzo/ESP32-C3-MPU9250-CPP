@@ -70,8 +70,9 @@ extern "C" void app_main(void) {
         //mpu9250.accGetRead();
         //mpu9250.temRead();
         //mpu9250.temGetRead();
-        //mpu9250.magRead();
+        mpu9250.magRead();
         //mpu9250.magGetRead();
+	mpu9250.magGetRead_term();
         //mpu9250.printDataToTerminal();
         vTaskDelay(pdMS_TO_TICKS(250));
     }

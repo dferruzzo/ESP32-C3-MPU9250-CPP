@@ -3,7 +3,7 @@ build/
 **/build/
 main/build/
 managed_components
-venv
-.tags
+venv/
+.venv/
 *.swp
 .vscode/

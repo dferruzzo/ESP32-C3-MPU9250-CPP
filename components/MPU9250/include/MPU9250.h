@@ -32,6 +32,7 @@ struct Vec3f {
 };
 
 // Standalone helper function - checks if an Eigen matrix is diagonal
+
 template<typename Derived>
 bool isDiagonalMatrix(const Eigen::MatrixBase<Derived>& matrix) {
     // Check if all off-diagonal elements are zero
@@ -127,6 +128,7 @@ class MPU9250
 		esp_err_t magRead();
 		esp_err_t magRead_old();
 		esp_err_t magGetRead();
+		esp_err_t magGetRead_term();
 		esp_err_t magCalibrate(PL::NvsNamespace& nvs);
 		esp_err_t magCalibrate_old(PL::NvsNamespace& nvs);
 		esp_err_t magGetSamples(float* matrix, int rows, int cols);

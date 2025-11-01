@@ -62,9 +62,11 @@ SCL  ────────┴────────────────
     - [x] TODO: Criar função magConfig()
     - [x] TODO: Refazer a função magRead()
     - [ ] TODO: Refazer a calibração do magnetómetro magCalibrate().
-        - [ ] TODO: Coletar dados em posições diferentes (criar uma func.).
+        - [x] TODO: Coletar dados em posições diferentes (criar uma func.).
+        - [x] TODO: Plotar dados via /dev/tty* (COM) do mag em python `magplot.py`.
+        - [ ] TODO: Coletar amostras com distancia euclidiana mínima de 1uT (ou valor similiar apropriado).
+        - [ ] TODO: Verificar o calculo dos parâmetros da calibração (hard iron e soft iron) off-line no python.
         - [ ] TODO: Armazenar os dados coletados.
-        - [ ] TODO: Verificar o calculo dos parâmetros da calibração (hard iron e soft iron).
 - [ ] TODO: Kalman filter.
 - [ ] TODO: sensor fusion.
 
@@ -89,3 +91,16 @@ usbipd attach --wsl --busid 1-2 --auto-attach
 ```
 
 para ter acesso ao usb no Windows dentro do container.
+
+---
+
+## Ambiente virtual Python
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+``` 
+
+---
+

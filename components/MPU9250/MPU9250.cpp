@@ -951,11 +951,13 @@ esp_err_t MPU9250::readMagnetometerASA()
 
 esp_err_t MPU9250::magRead()
 {
+	bool silent = true; // for debugging
+			    // 
 	if (!this->magConfigured) {
 		ESP_LOGW(TAG, "Magnetometer not configured. Please configure the magnetometer first.");
 		return ESP_FAIL;
 	}
-	if (!this->magCalibrated && !this->magCalibrationInProgress) {
+	if (!this->magCalibrated && !this->magCalibrationInProgress && !silent) {
 		ESP_LOGW(TAG, "Magnetometer calibration not completed. Please calibrate the magnetometer first.");
 		//return ESP_FAIL;
 	}
@@ -1078,7 +1080,14 @@ esp_err_t MPU9250::magRead_old()
 	i2cManager->writeRegToDeviceWithHandle(*MPU9250_mag_handle_ptr, MPU9250_INT_PIN_CFG, &pass_through, 1);    // Turn-off PASS_THROUGH mode - Para ativar o Magnetómetro
 	return ESP_OK;
 }
-	
+
+esp_err_t MPU9250::magGetRead_term()
+{
+
+    printf("%.2f, %.2f, %.2f, %.2f\n", this->magData.x, this->magData.y, this->magData.z, this->magFieldStrength()); 	
+    return ESP_OK;
+}	
+
 esp_err_t MPU9250::magGetRead()
 {
 
@@ -1123,52 +1132,30 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 	int rows = this->magNumSamplesCal;
 	int cols = 3;
 	float magSamplesMatrix[rows][cols];
-	float magCurrentSample[cols]; 
-	int count = 0;
-	ESP_LOGI(TAG, "Iniciando a calibração do magnetômetro...");	
-	ESP_LOGI(TAG, "Gire o sensor em todas as direções para coletar os dados necessários.");
-	while (count < magNumSamplesCal){
-		this->magRead();  // Lê os dados do magnetômetro
-		magCurrentSample[0] = this->magData.x;
-		magCurrentSample[1] = this->magData.y;
-		magCurrentSample[2] = this->magData.z;
-		if (isMagSampleOK(count, cols,  &magCurrentSample[0], &magSamplesMatrix[0][0])) {
-			magSamplesMatrix[count][0] = magCurrentSample[0];
-			magSamplesMatrix[count][1] = magCurrentSample[1];
-			magSamplesMatrix[count][2] = magCurrentSample[2];
-			count++;
-			ESP_LOGI(TAG, "Amostra válida: X:%.2f, Y:%.2f, Z:%.2f", 
-					magCurrentSample[0], magCurrentSample[1], magCurrentSample[2]);
-			ESP_LOGI(TAG, "Amostras coletadas: %d de %d", count, this->magNumSamplesCal);
-		} 
-		else {
-			ESP_LOGI(TAG, "Amostra inválida. Descartando: X:%.2f, Y:%.2f, Z:%.2f", 
-					magCurrentSample[0], magCurrentSample[1], magCurrentSample[2]);
-		}
-		this->timer(1.0, false);
+	if(this->magGetSamples(&magSamplesMatrix[0][0], rows, cols) != ESP_OK){
+		ESP_LOGE(TAG, "Failed to get magnetometer samples for calibration.");
+		this->magCalibrationInProgress = false;
+		return ESP_FAIL;
 	}
-
 	// Sample to EigenVector and EigenMatrix
 	Eigen::VectorXf magSample(10);
 	Eigen::MatrixXf XtX(10,10);
 	XtX.setZero(); 	
-	count = 0;
+	int count = 0;
 	while (count < this->magNumSamplesCal){
 		float x = magSamplesMatrix[count][0];
 		float y = magSamplesMatrix[count][1];
 		float z = magSamplesMatrix[count][2];
-		
-		magSample(0) = x * x; 	  // this->magData.x * this->magData.x;
-		magSample(1) = 2 * x * y; // 2 * this->magData.x * this->magData.y;
-		magSample(2) = 2 * x * z; // 2* this->magData.x * this->magData.z;
-		magSample(3) = y * y;     // this->magData.y * this->magData.y;
-		magSample(4) = 2 * y * z; // 2 * this->magData.y * this->magData.z;
-		magSample(5) = z * z;     // this->magData.z * this->magData.z;
-		magSample(6) = x;         // this->magData.x;
-		magSample(7) = y;         // this->magData.y;
-		magSample(8) = z;         // this->magData.z;
+		magSample(0) = x*x;	
+		magSample(1) = 2*x*y; 
+		magSample(2) = 2*x*z;
+		magSample(3) = y*y;
+		magSample(4) = 2*y*z;
+		magSample(5) = z*z;
+		magSample(6) = x; 
+		magSample(7) = y; 
+		magSample(8) = z;
 		magSample(9) = 1.0f;
-
 		for (int r = 0; r < 10; r++) {
 			for (int s = 0; s < 10; s++) {
 				XtX(r,s) = XtX(r,s) + magSample(r)*magSample(s);
@@ -1185,19 +1172,18 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 	// Get the eigenvalues and eigenvectors
 	Eigen::VectorXf eigenvalues_XtX = solver_XtX.eigenvalues().real();
 	Eigen::MatrixXf eigenvectors_XtX = solver_XtX.eigenvectors().real();
-
 	/* Encontrar o índice do menor autovalor */
 	int minIndex;
 	eigenvalues_XtX.minCoeff(&minIndex);
 	//ESP_LOGI(TAG, "Minimum eigenvalue index: %d", minIndex);
 	ESP_LOGI(TAG, "Minimum eigenvalue of XtX: %.6f", eigenvalues_XtX(minIndex));
-
 	/* Encontrar o autovetor corresponedente ao mínimo autovalor */
 	Eigen::VectorXf minEigenvector_XtX = eigenvectors_XtX.col(minIndex);
     	printEigenVector(TAG, "Minimum eigenvector of XtX", minEigenvector_XtX, 6);
-
+	ESP_LOGI(TAG, "Norma do autovetor mínimo: %.6f", minEigenvector_XtX.norm());
+	
 	/* Ellipsoid Fit Matrix */
-	Eigen::Matrix3f A;
+	Eigen::Matrix3f A, A_scaled;
 	A(0,0) = minEigenvector_XtX(0); // beta0
 	A(0,1) = minEigenvector_XtX(1); // beta1
 	A(0,2) = minEigenvector_XtX(2); // beta2
@@ -1208,7 +1194,12 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 	A(2,1) = minEigenvector_XtX(4); // beta4
 	A(2,2) = minEigenvector_XtX(5); // beta5
 	printEigenMatrix(TAG, "Ellipsoid Fit Matrix A", A, 6);	
+	// det((1/1000)*(A*1000))=(1/1000)^3*det(A*1000)
+	float scale = 10000.0;
+	A_scaled = A*scale;
 
+	//float detEigenMatrix(const Eigen::Matrix3f& matrix) {
+	ESP_LOGI(TAG, "Determinant of matrix A: %.6f", A_scaled.determinant());
 	/* Hard Iron Vector */
 	this->V = -(0.5f) * A.inverse() * Eigen::Vector3f(minEigenvector_XtX(6), minEigenvector_XtX(7), minEigenvector_XtX(8));
 	printEigenVector(TAG, "Hard Iron Offset Vector V", V, 6);
