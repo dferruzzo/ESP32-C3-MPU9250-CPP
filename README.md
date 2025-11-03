@@ -30,29 +30,6 @@ SCL  ────────┴────────────────
 
 ## TODO
 
-- [x] TODO: Test: void I2CManager::writeRegToDevice(uint8_t dev_address, uint8_t reg_address, uint8_t* data, size_t length);
-- [x] TODO: Implement: esp_err_t I2Cmanager::writeRegFromDeviceWithHandle(i2c_master_dev_handle_t dev_handle, uint8_t reg_address, uint8_t* data, size_t length);
-- [x] TODO: Configure MPU9250 gyroscope.
-- [x] TODO: Read gyro.
-- [x] TODO: Calibrate gyro (only bias).
-- [x] TODO: Configure MPU9250 accelerometer.
-- [x] TODO: Read acc.
-- [x] TODO: Read temperature.
-- [x] TODO: Calibrate temp.
-- [x] TODO: Configure MPU9250 magnetometer.
-- [x] TODO: Read mag.
-- [x] TODO: python plot app.
-- [x] TODO: Install Eigen.
-- [x] TODO: Test Eigen.
-- [x] TODO: Calibrate acc.
-    - [x] TODO: Calcular matriz Y.
-    - [x] TODO: Calcular matriz W.
-- [x] TODO: Gravar dados de calibração na NVS (Non-volatile storage)?
-    - [x] TODO: Revisar a função bool handleError(esp_err_t err, bool ignoreNotFound = false); no header NVSWrapper.h, pode estar produzindo um erro. CANCELADO!
-    - [x] TODO: Utilizando pl_nvs component.
-    - [x] TODO: Implementar as funções que gravam os dados no NVS.
-    - [x] TODO: Gravar bias do gyro. Na calibração verificar se há armazanado bias.
-    - [x] TODO: Gravar dados de calibração do aceleómetro. Na calibração verificar se há dados armazenados.
 - [ ] TODO: Calibrate mag.
     - [x] TODO: Gravar dados no NVS. Na calibração verificar se há dados guardados.
     - [x] TODO: Verificar as unidades dos dados do magnetómetro (µT) e fazer ajustes se necessário.
@@ -64,9 +41,10 @@ SCL  ────────┴────────────────
     - [ ] TODO: Refazer a calibração do magnetómetro magCalibrate().
         - [x] TODO: Coletar dados em posições diferentes (criar uma func.).
         - [x] TODO: Plotar dados via /dev/tty* (COM) do mag em python `magplot.py`.
-        - [ ] TODO: Coletar amostras com distancia euclidiana mínima de 1uT (ou valor similiar apropriado).
-        - [ ] TODO: Verificar o calculo dos parâmetros da calibração (hard iron e soft iron) off-line no python.
+        - [x] TODO: Coletar amostras com distancia euclidiana mínima de 1uT (ou valor similiar apropriado).
+        - [x] TODO: Verificar o calculo dos parâmetros da calibração (hard iron e soft iron) off-line no python. Tirei o fator de escala, dexei só o offset.
         - [ ] TODO: Armazenar os dados coletados.
+- [ ] TODO: Organizar todas as calibrações.
 - [ ] TODO: Kalman filter.
 - [ ] TODO: sensor fusion.
 

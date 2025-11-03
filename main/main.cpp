@@ -43,7 +43,6 @@ extern "C" void app_main(void) {
     MPU9250 mpu9250(&i2cManager);
 
     // Testando as configuracões do giro.
-    /*
     mpu9250.gyrConfig(MPU9250_GYRO_FS_SEL_1000,
                     MPU9250_FCHOICE_B_GYRO_FILTER_ENABLED,
                     MPU9250_GYRO_DLPF_CFG_20HZ);
@@ -57,11 +56,10 @@ extern "C" void app_main(void) {
 
     mpu9250.forceAccCalibration = false; // Força a calibração do acelerômetro        
     mpu9250.accCalibrate(nvs);
-    */
     
     mpu9250.magConfig();
-    //mpu9250.forceMagCalibration = true; // Força a calibração do magnetômetro	
-    //mpu9250.magCalibrate(nvs);
+    mpu9250.forceMagCalibration = true; // Força a calibração do magnetômetro	
+    mpu9250.magCalibrate(nvs);
     
     while(1){
     	//mpu9250.gyrRead();
@@ -71,8 +69,8 @@ extern "C" void app_main(void) {
         //mpu9250.temRead();
         //mpu9250.temGetRead();
         mpu9250.magRead();
-        //mpu9250.magGetRead();
-	mpu9250.magGetRead_term();
+        mpu9250.magGetRead();
+	//mpu9250.magGetRead_term();
         //mpu9250.printDataToTerminal();
         vTaskDelay(pdMS_TO_TICKS(250));
     }

@@ -1235,7 +1235,10 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
             		return ESP_FAIL;
         	}
 	}
-	this->W_inv = Q * sqrt_L * Q.inverse();
+	// PARA UTILIZAR O FATOR DE ESCALA, DESCOMENTAR A LINHA ABAIXO E COMENTAR A LINHA DEPOIS DELA
+	//this->W_inv = Q * sqrt_L * Q.inverse();
+	// PARA NÃO UTILIZAR O FATOR DE ESCALA, COMENTAR A LINHA ACIMA E DESCOMENTAR A LINHA ABAIXO
+	this->W_inv = Eigen::Matrix3f::Identity();
 	//printEigenMatrix(TAG, "Inverse Soft Iron Matrix W^{-1}", W_inv, 6);
 	//
 	/* Geomagnetic Field Strength */
@@ -1244,6 +1247,8 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 	/* Fit error */
 	float fit_error = (1.0f/(2.0f * B*B)) * sqrtf( eigenvalues_XtX(minIndex) / this->magNumSamplesCal );
 	ESP_LOGI(TAG, "Magnetometer fit error: %.6f", fit_error);
+	
+	// Store calibration data in NVS
 
 	ESP_LOGI(TAG, "Magnetometer calibration completed successfully.");
 	this->magCalibrationInProgress = false;
