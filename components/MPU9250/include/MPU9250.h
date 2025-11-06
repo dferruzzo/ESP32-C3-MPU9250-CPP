@@ -105,7 +105,10 @@ class MPU9250
 		~MPU9250();
 		esp_err_t init();
 		esp_err_t MPU9250Reset();
-
+		esp_err_t sensorsConfig();
+    		esp_err_t sensorsCalibrate(PL::NvsNamespace& nvs);
+		void forceCalibration(bool gyr, bool acc, bool mag);
+		esp_err_t sensorsRead();		
 		/* Girsocópio */
 		bool forceGyroCalibration = false; // Força a calibração do giroscópio
 		esp_err_t gyrConfig(uint8_t fullScaleSel, uint8_t enableFilter, uint8_t gyroDlpfCfg);

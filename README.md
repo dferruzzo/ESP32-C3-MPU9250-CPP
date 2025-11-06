@@ -47,8 +47,7 @@ SCL  ────────┴────────────────
         - [x] TODO: store calibration parameters in NVS.
 - [ ] TODO: Create a function to read all raw data (accel, gyro, mag) at once.
 - [ ] TODO: Calculate the time spend in the previous  function.
-- [ ] TODO: Generate a physical output to measure frequency.
-- [ ] TODO: Organizar todas as calibrações.
+- [x] TODO: Organizar todas as calibrações.
 - [ ] TODO: Kalman filter.
 - [ ] TODO: sensor fusion.
 

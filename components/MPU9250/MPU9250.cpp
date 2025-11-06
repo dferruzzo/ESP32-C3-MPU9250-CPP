@@ -73,6 +73,83 @@ esp_err_t MPU9250::MPU9250Reset()
 
 }
 
+esp_err_t MPU9250::sensorsConfig()
+{
+	esp_err_t ret1, ret2, ret3; 
+	// Configuracões do giro.
+	ret1 = this->gyrConfig(MPU9250_GYRO_FS_SEL_1000,
+				MPU9250_FCHOICE_B_GYRO_FILTER_ENABLED,
+                    		MPU9250_GYRO_DLPF_CFG_20HZ);
+	// Configurações do acelerômetro.
+    	ret2 = this->accConfig(MPU9250_ACCEL_FS_SEL_4,
+        			MPU9250_ACCEL_NO_FIL_BW_1046Hz);
+    	// Configuração do Magnetômetro
+    	ret3 = this->magConfig();
+	
+	if (ret1!=ESP_OK || ret2!=ESP_OK || ret3!= ESP_OK)
+	{
+		ESP_LOGW(TAG, "Erro nas configurações do sensor.");
+		ESP_LOGW(TAG, "Giroscópio:", esp_err_to_name(ret1));
+	       	ESP_LOGW(TAG, "Acelerômetro:", esp_err_to_name(ret2));
+		ESP_LOGW(TAG, "Magnetômetro:", esp_err_to_name(ret3));
+	       	return ESP_ERR_NOT_FINISHED;
+	}
+	else
+	{	
+	return ESP_OK;
+	}
+}
+
+esp_err_t MPU9250::sensorsRead()
+{
+    	esp_err_t ret1, ret2, ret3, ret4;
+	ret1 = this->gyrRead();
+        ret2 = this->accRead();
+        ret3 = this->temRead();
+        ret4 = this->magRead();
+	if (ret1!=ESP_OK || ret2!=ESP_OK || ret3!=ESP_OK || ret4!=ESP_OK)
+	{
+		ESP_LOGW(TAG, "Erro na leitura dos sensores.");
+		ESP_LOGW(TAG, "Giroscópio:", esp_err_to_name(ret1));
+	       	ESP_LOGW(TAG, "Acelerômetro:", esp_err_to_name(ret2));
+		ESP_LOGW(TAG, "Temperatura:", esp_err_to_name(ret3));
+		ESP_LOGW(TAG, "Magnetômetro:", esp_err_to_name(ret4));
+	       	return ESP_ERR_NOT_FINISHED;
+	}
+	else
+	{	
+		return ESP_OK;
+	}
+}	
+
+void MPU9250::forceCalibration(bool gyr, bool acc, bool mag)
+{
+    this->forceGyroCalibration = gyr;
+    this->forceAccCalibration = acc;
+    this->forceMagCalibration = mag;	
+}
+
+esp_err_t MPU9250::sensorsCalibrate(PL::NvsNamespace& nvs)
+{
+	esp_err_t ret1, ret2, ret3;
+	ret1 = this->gyrCalibrate(nvs);
+    	ret2 = this->accCalibrate(nvs);
+    	ret3 = this->magCalibrate(nvs);
+	if (ret1!=ESP_OK || ret2!=ESP_OK || ret3!=ESP_OK)
+	{
+		ESP_LOGW(TAG, "Calibração falhou");
+		ESP_LOGW(TAG, "Calibração do Giroscópio:", esp_err_to_name(ret1));
+		ESP_LOGW(TAG, "Calibração do Acelerômetro:", esp_err_to_name(ret2));
+		ESP_LOGW(TAG, "Calibração do Magnetômetro falhou:", esp_err_to_name(ret3));
+		return ESP_ERR_NOT_FINISHED;
+	}
+	else
+	{
+		return ESP_OK;
+
+	}
+}
+
 esp_err_t MPU9250::enableI2CMaster() 
 {
 	// Enable I2C master mode
