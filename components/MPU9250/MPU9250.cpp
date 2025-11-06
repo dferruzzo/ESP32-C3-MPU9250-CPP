@@ -1128,7 +1128,59 @@ esp_err_t MPU9250::magGetSamples(float* matrix, int rows, int cols)
 
 esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 {
+	/* ==============================================================
+	 * Magnetometer Calibration using Ellipsoid Fit Method
+	 * Reference:
+	 * ==============================================================
+	 *
+	 * 0. Set the flag magCalibrationInProgress to true 
+	 * 1. Check if calibration data already exists in NVS
+	 * 2. Collect 'magNumSamplesCal' samples of magnetometer data while rotating the sensor in all directions
+	 * 3. Formulate the problem as a quadratic form and compute the matrix XtX
+	 * 4. Perform eigen decomposition of XtX to find the minimum eigenvalue and corresponding eigenvector
+	 * 5. Extract the ellipsoid fit matrix A, hard iron offset vector V, and compute the inverse soft iron matrix W_inv 
+	 * 6. Store the calibration parameters in NVS
+	 */
+	// Step 0: Set calibration in progress flag
 	this->magCalibrationInProgress = true;
+	// Step 1: Check if calibration data already exists in NVS
+	// Use NVSUtils to read the flag
+	bool magCalibrationStored = false;
+	esp_err_t ret = NVSUtils::ReadBool(nvs, "magCalStr", magCalibrationStored); 
+	if ((ret==ESP_OK) && magCalibrationStored && !forceMagCalibration) {
+		ESP_LOGI(TAG, "Magnetometer calibration already stored in NVS. Skipping calibration.");
+		// Read the calibration data from NVS
+	    	esp_err_t ret1 = NVSUtils::ReadEigenMatrix(nvs, "magCalMat", this->W_inv);
+	    	if (ret1 != ESP_OK) {
+			ESP_LOGE(TAG, "Failed to read magnetometer calibration matrix from NVS: %s", esp_err_to_name(ret1));
+			return ret1; // Return error if writing to NVS failed
+	    	}
+	    	ret1 = NVSUtils::ReadEigenVector(nvs, "magCalVec", this->V);
+	    	if (ret1 != ESP_OK) {
+			ESP_LOGE(TAG, "Failed to read magnetometer calibration vector from NVS: %s", esp_err_to_name(ret1));
+			return ret1; // Return error if writing to NVS failed
+	    	}
+		this->magCalibrated = true;
+		this->magCalibrationInProgress = false;
+		this->magCalibrationFailed = false;
+		ESP_LOGI(TAG, "Magnetometer calibration parameters loaded from NVS successfully.");
+		return ESP_OK;
+	}
+	else if (ret != ESP_OK && ret == ESP_ERR_NVS_NOT_FOUND) {
+		ESP_LOGE(TAG, "Failed to read magnetometer calibration status from NVS: %s", esp_err_to_name(ret));
+		this->magCalibrationInProgress = false;
+		return ret; // Return error if reading from NVS failed
+	}
+	if (forceMagCalibration) {
+		ESP_LOGI(TAG, "Force magnetometer calibration enabled. Proceeding with calibration...");
+	}
+
+	ESP_LOGI(TAG, "*******************************************************");	
+	ESP_LOGI(TAG, "Iniciando a calibração do magnetômetro...");
+	ESP_LOGI(TAG, "*******************************************************");
+	ESP_LOGI(TAG, "Gire o sensor em todas as direções para coletar os dados necessários.");
+	
+	// Step 2: Collect magnetometer samples
 	int rows = this->magNumSamplesCal;
 	int cols = 3;
 	float magSamplesMatrix[rows][cols];
@@ -1137,7 +1189,7 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 		this->magCalibrationInProgress = false;
 		return ESP_FAIL;
 	}
-	// Sample to EigenVector and EigenMatrix
+	// 3. Formulate the problem and compute XtX
 	Eigen::VectorXf magSample(10);
 	Eigen::MatrixXf XtX(10,10);
 	XtX.setZero(); 	
@@ -1163,7 +1215,7 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 		}
 		count++;
 	}
-	
+	// Step 4: Eigen decomposition of XtX	
 	Eigen::EigenSolver<Eigen::MatrixXf> solver_XtX(XtX);
 	if (solver_XtX.info() != Eigen::Success) {
 		ESP_LOGE(TAG, "Eigen decomposition failed!");
@@ -1179,11 +1231,11 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 	ESP_LOGI(TAG, "Minimum eigenvalue of XtX: %.6f", eigenvalues_XtX(minIndex));
 	/* Encontrar o autovetor corresponedente ao mínimo autovalor */
 	Eigen::VectorXf minEigenvector_XtX = eigenvectors_XtX.col(minIndex);
-    	printEigenVector(TAG, "Minimum eigenvector of XtX", minEigenvector_XtX, 6);
+    	//printEigenVector(TAG, "Minimum eigenvector of XtX", minEigenvector_XtX);
 	ESP_LOGI(TAG, "Norma do autovetor mínimo: %.6f", minEigenvector_XtX.norm());
-	
+	/* Step 5: Extract calibration parameters */	
 	/* Ellipsoid Fit Matrix */
-	Eigen::Matrix3f A, A_scaled;
+	Eigen::Matrix3f A;
 	A(0,0) = minEigenvector_XtX(0); // beta0
 	A(0,1) = minEigenvector_XtX(1); // beta1
 	A(0,2) = minEigenvector_XtX(2); // beta2
@@ -1193,16 +1245,11 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 	A(2,0) = minEigenvector_XtX(2); // beta2
 	A(2,1) = minEigenvector_XtX(4); // beta4
 	A(2,2) = minEigenvector_XtX(5); // beta5
-	printEigenMatrix(TAG, "Ellipsoid Fit Matrix A", A, 6);	
-	// det((1/1000)*(A*1000))=(1/1000)^3*det(A*1000)
-	float scale = 10000.0;
-	A_scaled = A*scale;
-
+	//printEigenMatrix(TAG, "Ellipsoid Fit Matrix A", A);	
 	//float detEigenMatrix(const Eigen::Matrix3f& matrix) {
-	ESP_LOGI(TAG, "Determinant of matrix A: %.6f", A_scaled.determinant());
 	/* Hard Iron Vector */
 	this->V = -(0.5f) * A.inverse() * Eigen::Vector3f(minEigenvector_XtX(6), minEigenvector_XtX(7), minEigenvector_XtX(8));
-	printEigenVector(TAG, "Hard Iron Offset Vector V", V, 6);
+	//printEigenVector(TAG, "Hard Iron Offset Vector V", V, 6);
 	/* Inverse Soft Iron Matrix */
 	Eigen::EigenSolver<Eigen::MatrixXf> solver_A(A);
 	if (solver_A.info() != Eigen::Success) {
@@ -1211,20 +1258,19 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 	}
 	// Get the eigenvalues and eigenvectors of A
 	Eigen::Vector3f eigenvalues_A = solver_A.eigenvalues().real();
-    	printEigenVector(TAG, "Eigenvalues of matrix A", eigenvalues_A, 6);	
+    	//printEigenVector(TAG, "Eigenvalues of matrix A", eigenvalues_A, 6);	
 	Eigen::Matrix3f Q = solver_A.eigenvectors().real(); // Eigenvectors matrix of A
-	printEigenMatrix(TAG, "Q - Eigenvectors of matrix A", Q, 6);
+	//printEigenMatrix(TAG, "Q - Eigenvectors of matrix A", Q, 6);
 	// Cria sqrt_L com as raízes quadradas dos autovalores
 	Eigen::Vector3f sqrt_eigenvalues = eigenvalues_A.unaryExpr([](float x) { return sqrtf(fmaxf(x, 0.0f)); });
 	Eigen::Matrix3f sqrt_L = sqrt_eigenvalues.asDiagonal();
     	//ESP_LOGI(TAG, "Is sqrt_L diagonal matrix? %s", isDiagonalMatrix(sqrt_L) ? "Yes" : "No");
-	printEigenMatrix(TAG, "sqrt(L) - Square root of eigenvalues", sqrt_L, 6);
-
+	//printEigenMatrix(TAG, "sqrt(L) - Square root of eigenvalues", sqrt_L, 6);
     	// If any of the elements of sqrt_L are zero, log a warning
 	float zero_tol = 1e-6f;
     	for (int i = 0; i < sqrt_L.rows(); i++) {
         	if (sqrt_L(i, i) <= zero_tol) {
-			printEigenMatrix(TAG, "Matrix sqrt(L) causing issue", sqrt_L, 6);	
+			//printEigenMatrix(TAG, "Matrix sqrt(L) causing issue", sqrt_L, 6);	
             		ESP_LOGW(TAG, "Warning: sqrt_L has zero on its diagonal at index %d", i);
             		ESP_LOGW(TAG, "É necessário coletar mais dados.");
             		ESP_LOGW(TAG, "Calibração do magnetômetro não concluída.");
@@ -1247,12 +1293,30 @@ esp_err_t MPU9250::magCalibrate(PL::NvsNamespace& nvs)
 	/* Fit error */
 	float fit_error = (1.0f/(2.0f * B*B)) * sqrtf( eigenvalues_XtX(minIndex) / this->magNumSamplesCal );
 	ESP_LOGI(TAG, "Magnetometer fit error: %.6f", fit_error);
-	
 	// Store calibration data in NVS
-
+	// Store the matrix W_inv
+	// Store the vector V
+	esp_err_t ret2 = NVSUtils::WriteEigenMatrix(nvs, "magCalMat", this->W_inv);
+	if (ret2 != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to write magnetometer calibration matrix to NVS: %s", esp_err_to_name(ret2));
+		return ret; // Return error if writing to NVS failed
+	}
+	ret2 = NVSUtils::WriteEigenVector(nvs, "magCalVec", this->V);
+	if (ret2 != ESP_OK) {
+		ESP_LOGE(TAG, "Failed to write magnetometer calibration vector to NVS: %s", esp_err_to_name(ret2));	
+		return ret2; // Return error if writing to NVS failed
+	}				 // 
+	ret2 = NVSUtils::WriteBool(nvs, "magCalStr", true); // Set the flag to indicate calibration is stored
+	if (ret2 != ESP_OK){
+		ESP_LOGE(TAG, "Failed to write magnetometer calibration status to NVS: %s", esp_err_to_name(ret2));
+		return ret2; // Return error if writing to NVS failed
+	}
+	nvs.Commit();
+	ESP_LOGI(TAG, "Magnetometer calibration data stored in NVS.");
 	ESP_LOGI(TAG, "Magnetometer calibration completed successfully.");
 	this->magCalibrationInProgress = false;
 	this->magCalibrated = true;
+	this->magCalibrationFailed = false;
 	return ESP_OK;
 }
 
@@ -1303,12 +1367,10 @@ esp_err_t MPU9250::magCalibrate_old(PL::NvsNamespace& nvs)
 			ESP_LOGE(TAG, "Failed to read magnetometer calibration vector from NVS: %s", esp_err_to_name(readErrorVector));
 			return readErrorVector; // Return error if writing to NVS failed
 	    	}
-
 		// Set the calibration flag to true
             	this->magCalibrated = true;
             	this->magCalibrationInProgress = false;
             	this->magCalibrationFailed = false;
-
 		ESP_LOGI(TAG, "Magnetometer calibration data loaded from NVS.");
 		return ESP_OK; // Skip calibration if data is already stored
 	} else if (magCalStrError != ESP_OK) {

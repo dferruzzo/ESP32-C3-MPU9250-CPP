@@ -30,7 +30,7 @@ SCL  ────────┴────────────────
 
 ## TODO
 
-- [ ] TODO: Calibrate mag.
+- [x] TODO: Calibrate mag. *O FATOR DE ESCCALA FOI RETIRADO POR ENQUANTO. APENAS OFFSET FOI UTILIZADO*.
     - [x] TODO: Gravar dados no NVS. Na calibração verificar se há dados guardados.
     - [x] TODO: Verificar as unidades dos dados do magnetómetro (µT) e fazer ajustes se necessário.
     - [x] TODO: Go to MPU9250 Internal Master mode (BYPASS_EN = 0)
@@ -43,7 +43,11 @@ SCL  ────────┴────────────────
         - [x] TODO: Plotar dados via /dev/tty* (COM) do mag em python `magplot.py`.
         - [x] TODO: Coletar amostras com distancia euclidiana mínima de 1uT (ou valor similiar apropriado).
         - [x] TODO: Verificar o calculo dos parâmetros da calibração (hard iron e soft iron) off-line no python. Tirei o fator de escala, dexei só o offset.
-        - [ ] TODO: Armazenar os dados coletados.
+        - [x] TODO: Armazenar os dados coletados.
+        - [x] TODO: store calibration parameters in NVS.
+- [ ] TODO: Create a function to read all raw data (accel, gyro, mag) at once.
+- [ ] TODO: Calculate the time spend in the previous  function.
+- [ ] TODO: Generate a physical output to measure frequency.
 - [ ] TODO: Organizar todas as calibrações.
 - [ ] TODO: Kalman filter.
 - [ ] TODO: sensor fusion.
