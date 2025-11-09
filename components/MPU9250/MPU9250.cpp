@@ -1606,6 +1606,20 @@ float	MPU9250::magFieldStrength()
     return sqrtf(this->magData.x * this->magData.x + this->magData.y * this->magData.y + this->magData.z * this->magData.z);
 } // Força do campo magnético em microteslas (uT)
 
+void MPU9250::printData()
+{
+	/* * Print data in CSV format. The format is:
+	 * "Timestamp (us), GyrX, GyrY, GyrZ, AccX, AccY, AccZ, MagX, MagY, MagZ, Temp"
+	 * */
+	int64_t now = esp_timer_get_time(); // In microseconds
+	printf("%lld, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f, %.2f \n",
+                now, 
+		gyroData.x, gyroData.y, gyroData.z, 
+                accData.x, accData.y, accData.z,
+                magData.x, magData.y, magData.z,
+                temData);
+}
+
 void MPU9250::printDataToTerminal()
 {
 	// Print data in CSV format. The format is:

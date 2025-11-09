@@ -1,3 +1,3 @@
 idf_component_register(SRCS "MPU9250.cpp"
                     INCLUDE_DIRS "include"
-                    REQUIRES driver I2CManager eigen nvs_flash NVSUtils)
+                    REQUIRES driver I2CManager eigen nvs_flash NVSUtils esp_timer)

@@ -16,6 +16,7 @@
 #include "nvs_flash.h"
 #include "NVSUtils.h"
 #include <math.h>
+#include "esp_timer.h"
 
 #define TAG "MPU9250"
 
@@ -143,7 +144,8 @@ class MPU9250
 		void timer(uint8_t seconds, bool showCountdown = true);	
 
 		void printDataToTerminal();
-
+		void printData();
+	
 	private:
 
 		/* Configuração do I2C */

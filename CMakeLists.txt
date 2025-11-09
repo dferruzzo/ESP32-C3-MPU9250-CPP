@@ -7,3 +7,5 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 #idf_build_set_property(MINIMAL_BUILD OFF)
 project(ESP32-C3-MPU9250-CPP)
 idf_build_set_property(COMPILE_OPTIONS "-DUSB_CDC_ON_BOOT=1" APPEND)
+#
+

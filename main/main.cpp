@@ -9,7 +9,7 @@
 #include "pl_nvs.h"
 #include "nvs_flash.h"
 #include "NVSUtils.h"
-#include "esp_timer.h"
+//#include "esp_timer.h"
 
 extern "C" {
 #include "esp_chip_info.h"
@@ -45,14 +45,11 @@ extern "C" void app_main(void) {
     /* Calibra sensores */
     mpu9250.sensorsCalibrate(nvs); 
     /* Loop principal */
-    int64_t start_time, end_time;
     while(true){
-	    start_time = esp_timer_get_time();
+	    /* medimos o tempo */
 	    mpu9250.sensorsRead();
-	    end_time = esp_timer_get_time();
-	    printf("Tempo decorrido: %lld (us), freq: %.6fx1e6 (hz)\n", (end_time - start_time), 1.0f/(end_time - start_time));
-	    mpu9250.printDataToTerminal();
-	    vTaskDelay(pdMS_TO_TICKS(250));
+	    mpu9250.printData();
+	    vTaskDelay(pdMS_TO_TICKS(10));
     }
     // Now loadedMat contains the matrix
     //  i2cManager.deInit();
